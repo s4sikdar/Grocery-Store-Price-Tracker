@@ -11,6 +11,9 @@
 # Mobile Tools for Java (J2ME)
 .mtj.tmp/
 
+# The entire target directory
+./target/*
+
 # Package Files #
 *.jar
 *.war
