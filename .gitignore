@@ -12,7 +12,7 @@
 .mtj.tmp/
 
 # The entire target directory
-./target/*
+target/
 
 # Package Files #
 *.jar
