@@ -46,22 +46,13 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		this.cities = new HashMap<>();
 		this.fpath = config_file_path;
 		File filename = new File(config_file_path);
-		//System.out.println(new File(".").getAbsolutePath());
-		//System.out.println(filename.exists());
-		//System.out.println(filename.canRead());
-		//System.out.println(filename.isFile());
-		//InputStream propertiesInputStream = null;
                 this.configurations = new Properties();
-                //propertiesInputStream = LoblawsIterator.class.getClassLoader().getResourceAsStream(config_file_path);
 		try {
 			this.configurations.load(new FileInputStream(config_file_path));
 		} catch (Throwable t) {
 			t.printStackTrace();
 		}
 		this.driver = null;
-		//this.configurations = new Properties();
-		//this.configurations.load(new FileInputStream(filename));
-
 	}
 	
 	public HashMap<String, String> next() {
@@ -80,18 +71,17 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 	// Code was taken from below stackoverflow link:
 	// https://stackoverflow.com/questions/12858972/how-can-i-ask-the-selenium-webdriver-to-wait-for-few-seconds-in-java
 	public WebElement fluentWait(final By locator, WebDriver driver, int timeout_duration, long polling_duration) {
-	    Wait<WebDriver> wait = new FluentWait<WebDriver>(driver)
+		Wait<WebDriver> wait = new FluentWait<WebDriver>(driver)
 		    .withTimeout(Duration.ofSeconds(timeout_duration))
 		    .pollingEvery(Duration.ofMillis(polling_duration))
 		    .ignoring(NoSuchElementException.class);
 
-	    WebElement foo = wait.until(new Function<WebDriver, WebElement>() {
-		public WebElement apply(WebDriver driver) {
-		    return driver.findElement(locator);
-		}
-	    });
-
-	    return foo;
+		WebElement foo = wait.until(new Function<WebDriver, WebElement>() {
+			public WebElement apply(WebDriver driver) {
+			    return driver.findElement(locator);
+			}
+		});
+		return foo;
 	};
 
 	public boolean elementExists(final By locator, WebDriver driver, int timeout_duration, long polling_duration) {
@@ -175,26 +165,160 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 			);
 		}
 
-		Set<String> unique_cities = this.cities.keySet();
-		for (String city: unique_cities) {
-			WebElement location_input_button = this.fluentWait(
-				new By.ByCssSelector(this.configurations.getProperty("location_input_field")),
-				this.driver, 30, 1000L
-			);
-			new Actions(this.driver)
-				.moveToElement(location_input_button)
-				.click()
-				.sendKeys(city)
-				.pause(Duration.ofMillis(500))
-				.sendKeys(Keys.ENTER)
-				.pause(Duration.ofMillis(750))
-				.perform();
-			String branch_info_selector = this.configurations.getProperty("store_content_box_selector");
-			WebElement store_info_container = this.fluentWait(
-				new By.ByCssSelector(branch_info_selector), this.driver, 30, 1000L
-			);
-		}
 
+	}
+
+	public void tryClickingElement(
+		final By locator, WebDriver driver, int timeout_duration, long polling_duration
+	) {
+		try {
+			WebElement element_in_question = this.fluentWait(locator, driver, timeout_duration, polling_duration);
+			element_in_question.click();
+		} catch (Throwable err) {
+			boolean element_still_there = this.elementExists(
+				locator, driver, timeout_duration, polling_duration
+			);
+			if (element_still_there) {
+				WebElement target_element = this.fluentWait(
+					locator, driver, timeout_duration, polling_duration
+				);
+				try {
+					new Actions(this.driver).moveToElement(target_element).click();
+				} catch (Throwable second_err) {
+					throw second_err;
+				}
+			}
+		}
+	}
+
+	private boolean menuItemToBeIgnored(WebElement element) {
+		String element_text = element.getText();
+		String main_menu_items_to_select = this.configurations.getProperty("main_menu_items_to_select");
+		String[] items_to_select = main_menu_items_to_select.split(",");
+		for (int index = 0; index < items_to_select.length; index++) {
+			if (element_text.indexOf(items_to_select[index]) >= 0) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	private boolean submenuItemToBeIgnored(WebElement element, String css_selector) {
+		String element_text = element.getText();
+		String grocery_submenu_items_to_ignore = this.configurations.getProperty("grocery_sub_menu_items_to_ignore");
+		String home_beauty_items_to_ignore = this.configurations.getProperty("home_beauty_submenu_items_to_ignore");
+		String[] grocery_items_to_ignore = grocery_submenu_items_to_ignore.split(",");
+		String[] home_items_to_ignore = home_beauty_items_to_ignore.split(",");
+		String[] items_to_ignore = grocery_items_to_ignore;
+		int opening_brace_index = css_selector.indexOf("(");
+		int closing_brace_index = css_selector.indexOf(")", opening_brace_index);
+		String number_between_brackets = css_selector.substring((opening_brace_index + 1), closing_brace_index);
+		int translated_number = -1;
+		try {
+			translated_number = Integer.parseInt(number_between_brackets);
+		} catch (Throwable err) {
+			System.out.println(err);
+			return false;
+		}
+		switch (translated_number) {
+			case 1:
+				items_to_ignore = grocery_items_to_ignore;
+				break;
+			case 2:
+				items_to_ignore = home_items_to_ignore;
+				break;
+			default:
+				return false;
+		}
+		for (String item_to_ignore: items_to_ignore) {
+			if (element_text.indexOf(item_to_ignore) >= 0) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public void gatherPricesForTownship(String township) throws InterruptedException {
+		String location_button_selector = this.configurations.getProperty("location_button");
+		String change_location_button_text = this.configurations.getProperty("change_location_button_text");
+		this.tryClickingElement(new By.ByCssSelector(location_button_selector), this.driver, 30, 1000L);
+		this.tryClickingElement(
+			new By.ByPartialLinkText(change_location_button_text), this.driver, 30, 1000L
+		);
+		WebElement location_input = this.fluentWait(
+			new By.ByCssSelector(this.configurations.getProperty("location_input_field")),
+			this.driver, 30, 1000L
+		);
+		new Actions(this.driver)
+			.moveToElement(location_input)
+			.click()
+			.sendKeys(township)
+			.pause(Duration.ofMillis(1000))
+			.sendKeys(Keys.ENTER)
+			.pause(Duration.ofMillis(500))
+			.perform();
+		String browse_location_button_selector = this.configurations.getProperty("browse_location_button_selector");
+		this.tryClickingElement(
+			new By.ByCssSelector(browse_location_button_selector), this.driver, 30, 1000L
+		);
+		try {
+			boolean location_confirmed_text_exists = this.elementExists(
+				new By.ByCssSelector(this.configurations.getProperty("location_confirmed_heading_selector")),
+				this.driver, 30, 500L
+			);
+			if (location_confirmed_text_exists) {
+				this.tryClickingElement(
+					new By.ByCssSelector(this.configurations.getProperty("close_location_confirmation_popup_selector")),
+					this.driver, 30, 500L
+				);
+			}
+		} catch (Exception err) {
+			boolean location_confirmed = this.elementExists(
+				new By.ByCssSelector(
+					this.configurations.getProperty("location_confirmed_heading_selector")
+				),
+				this.driver, 30, 500L
+			);
+			if (!location_confirmed) {
+				throw err;
+			}
+		}
+		String main_menu_item_selector = this.configurations.getProperty("main_menu_item_selector");
+		String submenu_item_selector_in_main_menu = this.configurations.getProperty(
+			"submenu_item_selector_in_main_menu"
+		);
+		WebElement main_menu_item = this.fluentWait(
+			new By.ByCssSelector(main_menu_item_selector),
+			this.driver, 30, 1000L
+		);
+		new Actions(this.driver).moveToElement(main_menu_item).pause(Duration.ofMillis(200)).click().perform();
+		WebElement submenu_item = this.fluentWait(
+			new By.ByCssSelector(submenu_item_selector_in_main_menu),
+			this.driver, 30, 1000L
+		);
+		new Actions(this.driver).moveToElement(submenu_item).pause(Duration.ofMillis(200)).click().perform();
+		WebElement fresh_fruits_button = this.fluentWait(
+			new By.ByCssSelector(this.configurations.getProperty("first_item_under_second_submenu")),
+			this.driver, 30, 1000L
+		);
+		new Actions(this.driver)
+			.moveToElement(fresh_fruits_button)
+			.pause(Duration.ofMillis(200))
+			.click()
+			.pause(Duration.ofSeconds(2))
+			.perform();
+		WebElement parent_div_of_first_item_button = this.fluentWait(
+			new By.ByCssSelector(this.configurations.getProperty("encompassing_div_for_first_item")),
+			this.driver, 30, 1000L
+		);
+		WebElement see_all_button = parent_div_of_first_item_button.findElement(new By.ByPartialLinkText("See All"));
+		new Actions(this.driver)
+			.moveToElement(see_all_button)
+			.pause(Duration.ofMillis(200))
+			.click()
+			.pause(Duration.ofSeconds(3))
+			.perform();
+		this.driver.get(this.configurations.getProperty("url"));
 	}
 
 	public String getUrl() throws InterruptedException {
@@ -208,6 +332,10 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		this.driver = new FirefoxDriver(options);
 		this.driver.get(this.configurations.getProperty("url"));
 		this.getAllCities();
+		Set<String> unique_cities = this.cities.keySet();
+		for (String city: unique_cities) {
+			this.gatherPricesForTownship(city);
+		}
 		this.driver.quit();
 		return this.configurations.getProperty("url");
 	}
