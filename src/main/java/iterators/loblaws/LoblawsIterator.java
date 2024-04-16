@@ -1,8 +1,6 @@
 package iterators.loblaws;
 import java.lang.*;
-import java.util.HashMap;
-import java.util.Set;
-import java.util.Properties;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.io.FileInputStream;
@@ -16,6 +14,7 @@ import org.openqa.selenium.By;
 import org.openqa.selenium.Keys;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.NoSuchElementException;
+import org.openqa.selenium.ElementNotInteractableException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
@@ -84,9 +83,37 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		return foo;
 	};
 
+	public WebElement fluentWaitTillVisibleandClickable(final By locator, WebDriver driver, int timeout_duration, long polling_duration) {
+		WebDriverWait wait = new WebDriverWait(
+			driver, Duration.ofSeconds(timeout_duration), Duration.ofMillis(polling_duration)
+		);
+
+		wait.until(ExpectedConditions.and(
+			ExpectedConditions.presenceOfElementLocated(locator),
+			ExpectedConditions.visibilityOfElementLocated(locator)
+		));
+		WebElement element_in_question = driver.findElement(locator);
+		return element_in_question;
+	}
+
 	public boolean elementExists(final By locator, WebDriver driver, int timeout_duration, long polling_duration) {
 		try {
 			WebElement element_to_find = this.fluentWait(
+				locator, driver, timeout_duration, polling_duration
+			);
+			if (element_to_find != null) {
+				return true;
+			} else {
+				return false;
+			}
+		} catch (Throwable err) {
+			return false;
+		}
+	}
+
+	public boolean elementExistsAndIsInteractable(final By locator, WebDriver driver, int timeout_duration, long polling_duration) {
+		try {
+			WebElement element_to_find = this.fluentWaitTillVisibleandClickable(
 				locator, driver, timeout_duration, polling_duration
 			);
 			if (element_to_find != null) {
@@ -238,6 +265,124 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		return false;
 	}
 
+	private StringBuilder incrementSelectorDigit(final StringBuilder selector) {
+		StringBuilder new_selector = new StringBuilder(selector.toString());
+		int opening_brace_index = new_selector.indexOf("(");
+		int closing_brace_index = new_selector.indexOf(")", opening_brace_index);
+		String number_between_brackets = new_selector.substring(
+			(opening_brace_index + 1), closing_brace_index
+		);
+		int translated_number = Integer.parseInt(number_between_brackets);
+		translated_number++;
+		new_selector.replace(
+			(opening_brace_index + 1), closing_brace_index, Integer.toString(translated_number)
+		);
+		return new_selector;
+	}
+
+	private StringBuilder changeSelectorDigit(final StringBuilder selector, int digit) {
+		StringBuilder new_selector = new StringBuilder(selector.toString());
+		int opening_brace_index = new_selector.indexOf("(");
+		int closing_brace_index = new_selector.indexOf(")", opening_brace_index);
+		String number_between_brackets = new_selector.substring(
+			(opening_brace_index + 1), closing_brace_index
+		);
+		new_selector.replace(
+			(opening_brace_index + 1), closing_brace_index, Integer.toString(digit)
+		);
+		return new_selector;
+	}
+
+	public void scrapeAllPrices(String city) {
+		List<HashMap<String, String>> prices = new ArrayList<HashMap<String, String>>();
+		StringBuilder product_label_selector = new StringBuilder(
+			this.configurations.getProperty("product_label_selector")
+		);
+		StringBuilder product_pricing_info_selector = new StringBuilder(
+			this.configurations.getProperty("product_pricing_info_selector")
+		);
+		StringBuilder next_button_selector = new StringBuilder(
+			this.configurations.getProperty("next_button_selector")
+		);
+		StringBuilder product_parent_container_selector = new StringBuilder(
+			this.configurations.getProperty("product_parent_container_selector")
+		);
+		By next_button_locator = new By.ByCssSelector(next_button_selector.toString());
+		By product_label_locator = new By.ByCssSelector(product_label_selector.toString());
+		By product_price_info_locator = new By.ByCssSelector(product_pricing_info_selector.toString());
+		By product_parent_container_locator = new By.ByCssSelector(
+			product_parent_container_selector.toString()
+		);
+		HashMap<String, String> price_data = new HashMap<>();
+		boolean next_button_interactable = true;
+		boolean at_bottom = false;
+		String next_button_disabled;
+		while (next_button_interactable) {
+			if (at_bottom) {
+				WebElement next_button = this.fluentWait(
+					next_button_locator, this.driver, 5, 250L
+				);
+				// Below javascript code from: https://stackoverflow.com/questions/42982950/how-to-scroll-down-the-page-till-bottomend-page-in-the-selenium-webdriver
+				JavascriptExecutor js = (JavascriptExecutor) this.driver;
+				js.executeScript("window.scrollTo(0, document.body.scrollHeight);");
+				new Actions(this.driver)
+					.moveToElement(next_button)
+					.click()
+					.pause(Duration.ofMillis(500))
+					.perform();
+				product_label_selector = this.changeSelectorDigit(product_label_selector, 1);
+				product_pricing_info_selector = this.changeSelectorDigit(
+					product_pricing_info_selector, 1
+				);
+				product_parent_container_selector = this.changeSelectorDigit(
+					product_parent_container_selector, 1
+				);
+				product_label_locator = new By.ByCssSelector(product_label_selector.toString());
+				product_price_info_locator = new By.ByCssSelector(product_pricing_info_selector.toString());
+				product_parent_container_locator = new By.ByCssSelector(
+					product_parent_container_selector.toString()
+				);
+			}
+			while (this.elementExists(product_label_locator, this.driver, 10, 500L)) {
+				WebElement product_label = this.fluentWait(
+					product_label_locator, this.driver, 5, 250L
+				);
+				String product_label_text = product_label.getText();
+				WebElement pricing_info = this.fluentWait(
+					product_price_info_locator, this.driver, 5, 250L
+				);
+				WebElement product_parent_container = this.fluentWait(
+					product_parent_container_locator, this.driver, 5, 250L
+				);
+				JavascriptExecutor js = (JavascriptExecutor) this.driver;
+				String script_code = "document.querySelector(\"" + product_parent_container_selector.toString() + "\").scrollIntoView(true);";
+				js.executeScript(script_code);
+				String pricing_info_text = pricing_info.getText();
+				price_data = new HashMap<>();
+				price_data.put("price_label", product_label_text);
+				price_data.put("price_info", pricing_info_text);
+				price_data.put("city_of_pruce", city);
+				prices.add(price_data);
+				product_label_selector = this.incrementSelectorDigit(product_label_selector);
+				product_pricing_info_selector = this.incrementSelectorDigit(product_pricing_info_selector);
+				product_parent_container_selector = this.incrementSelectorDigit(
+					product_parent_container_selector
+				);
+				product_label_locator = new By.ByCssSelector(product_label_selector.toString());
+				product_price_info_locator = new By.ByCssSelector(product_pricing_info_selector.toString());
+				product_parent_container_locator = new By.ByCssSelector(
+					product_parent_container_selector.toString()
+				);
+			}
+			WebElement next_items_button = this.fluentWait(
+				next_button_locator, this.driver, 5, 250L
+			);
+			next_button_disabled = next_items_button.getAttribute("disabled");
+			next_button_interactable = !(Boolean.parseBoolean(next_button_disabled));
+			at_bottom = true;
+		}
+	}
+
 	public void gatherPricesForTownship(String township) throws InterruptedException {
 		String location_button_selector = this.configurations.getProperty("location_button");
 		String change_location_button_text = this.configurations.getProperty("change_location_button_text");
@@ -307,17 +452,17 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 			.click()
 			.pause(Duration.ofSeconds(2))
 			.perform();
-		WebElement parent_div_of_first_item_button = this.fluentWait(
-			new By.ByCssSelector(this.configurations.getProperty("encompassing_div_for_first_item")),
-			this.driver, 30, 1000L
+		String see_all_link_selector = this.configurations.getProperty("see_all_link_selector");
+		WebElement see_all_button = this.fluentWaitTillVisibleandClickable(
+			new By.ByCssSelector(see_all_link_selector), this.driver, 30, 1000L
 		);
-		WebElement see_all_button = parent_div_of_first_item_button.findElement(new By.ByPartialLinkText("See All"));
 		new Actions(this.driver)
 			.moveToElement(see_all_button)
 			.pause(Duration.ofMillis(200))
 			.click()
 			.pause(Duration.ofSeconds(3))
 			.perform();
+		this.scrapeAllPrices(township);
 		this.driver.get(this.configurations.getProperty("url"));
 	}
 
