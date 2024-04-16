@@ -361,7 +361,7 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 				price_data = new HashMap<>();
 				price_data.put("price_label", product_label_text);
 				price_data.put("price_info", pricing_info_text);
-				price_data.put("city_of_pruce", city);
+				price_data.put("city_of_given_price", city);
 				prices.add(price_data);
 				product_label_selector = this.incrementSelectorDigit(product_label_selector);
 				product_pricing_info_selector = this.incrementSelectorDigit(product_pricing_info_selector);
