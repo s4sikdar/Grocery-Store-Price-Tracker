@@ -335,6 +335,7 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		StringBuilder product_pricing_info_selector = new StringBuilder(
 			this.configurations.getProperty("product_pricing_info_selector")
 		);
+		String pagination_selector = this.configurations.getProperty("nav_pagination_element_selector");
 		StringBuilder next_button_selector = new StringBuilder(
 			this.configurations.getProperty("next_button_selector")
 		);
@@ -342,6 +343,7 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 			this.configurations.getProperty("product_parent_container_selector")
 		);
 		By next_button_locator = new By.ByCssSelector(next_button_selector.toString());
+		By pagination_locator = new By.ByCssSelector(pagination_selector);
 		By product_label_locator = new By.ByCssSelector(product_label_selector.toString());
 		By product_price_info_locator = new By.ByCssSelector(product_pricing_info_selector.toString());
 		By product_parent_container_locator = new By.ByCssSelector(
@@ -350,14 +352,15 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		HashMap<String, String> price_data = new HashMap<>();
 		boolean next_button_interactable = true;
 		boolean at_bottom = false;
+		boolean pagination_exists;
 		String next_button_disabled;
+		JavascriptExecutor js = (JavascriptExecutor) this.driver;
 		while (next_button_interactable) {
 			if (at_bottom) {
 				WebElement next_button = this.fluentWait(
 					next_button_locator, this.driver, 5, 250L
 				);
 				// Below javascript code from: https://stackoverflow.com/questions/42982950/how-to-scroll-down-the-page-till-bottomend-page-in-the-selenium-webdriver
-				JavascriptExecutor js = (JavascriptExecutor) this.driver;
 				js.executeScript("window.scrollTo(0, document.body.scrollHeight);");
 				new Actions(this.driver)
 					.moveToElement(next_button)
@@ -388,13 +391,12 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 				WebElement product_parent_container = this.fluentWait(
 					product_parent_container_locator, this.driver, 5, 250L
 				);
-				JavascriptExecutor js = (JavascriptExecutor) this.driver;
 				String script_code = "document.querySelector(\"" + product_parent_container_selector.toString() + "\").scrollIntoView(true);";
 				js.executeScript(script_code);
 				String pricing_info_text = pricing_info.getText();
 				price_data = new HashMap<>();
-				price_data.put("price_label", product_label_text);
-				price_data.put("price_info", pricing_info_text);
+				price_data.put("product_label", product_label_text);
+				price_data.put("product_price_info", pricing_info_text);
 				price_data.put("city_of_given_price", city);
 				prices.add(price_data);
 				product_label_selector = this.incrementSelectorDigit(product_label_selector);
@@ -408,6 +410,11 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 					product_parent_container_selector.toString()
 				);
 			}
+			pagination_exists = this.elementExists(pagination_locator, this.driver, 5, 250L);
+			if (!pagination_exists) {
+				next_button_interactable = false;
+				continue;
+			}
 			WebElement next_items_button = this.fluentWait(
 				next_button_locator, this.driver, 5, 250L
 			);
@@ -415,9 +422,10 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 			next_button_interactable = !(Boolean.parseBoolean(next_button_disabled));
 			at_bottom = true;
 		}
+		System.out.println(prices);
 	}
 
-	public void gatherPricesForTownship(String township) throws InterruptedException {
+	private void changeLocation(String township) {
 		String location_button_selector = this.configurations.getProperty("location_button");
 		String change_location_button_text = this.configurations.getProperty("change_location_button_text");
 		this.tryClickingElement(new By.ByCssSelector(location_button_selector), this.driver, 30, 1000L);
@@ -462,6 +470,10 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 				throw err;
 			}
 		}
+	}
+
+	public void gatherPricesForTownship(String township) throws InterruptedException {
+		this.changeLocation(township);
 		String main_menu_item_selector = this.configurations.getProperty("main_menu_item_selector");
 		String submenu_item_selector_in_main_menu = this.configurations.getProperty(
 			"submenu_item_selector_in_main_menu"
@@ -476,27 +488,70 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 			this.driver, 30, 1000L
 		);
 		new Actions(this.driver).moveToElement(submenu_item).pause(Duration.ofMillis(200)).click().perform();
-		WebElement fresh_fruits_button = this.fluentWait(
-			new By.ByCssSelector(this.configurations.getProperty("first_item_under_second_submenu")),
-			this.driver, 30, 1000L
+		String index_after_first_bracket = this.configurations.getProperty("index_after_first_bracket");
+		int index_after_brackets = Integer.parseInt(index_after_first_bracket);
+		StringBuilder item_under_second_submenu_selector = new StringBuilder(
+			this.configurations.getProperty("item_under_second_submenu")
 		);
-		new Actions(this.driver)
-			.moveToElement(fresh_fruits_button)
-			.pause(Duration.ofMillis(200))
-			.click()
-			.pause(Duration.ofSeconds(2))
-			.perform();
-		String see_all_link_selector = this.configurations.getProperty("see_all_link_selector");
-		WebElement see_all_button = this.fluentWaitTillVisibleandClickable(
-			new By.ByCssSelector(see_all_link_selector), this.driver, 30, 1000L
+		StringBuilder see_all_link_selector = new StringBuilder(
+			this.configurations.getProperty("see_all_link_selector")
 		);
-		new Actions(this.driver)
-			.moveToElement(see_all_button)
-			.pause(Duration.ofMillis(200))
-			.click()
-			.pause(Duration.ofSeconds(3))
-			.perform();
-		this.scrapeAllPrices(township);
+		String parent_level_button_selector = this.configurations.getProperty(
+			"parent_submenu_subcategory_button_selector"
+		);
+		By current_submenu_locator = new By.ByCssSelector(item_under_second_submenu_selector.toString());
+		By see_all_link_locator = new By.ByCssSelector(see_all_link_selector.toString());
+		By parent_level_button_locator = new By.ByCssSelector(parent_level_button_selector);
+		boolean element_exists = this.elementExists(current_submenu_locator, this.driver, 10, 1000L);
+		boolean item_to_be_ignored;
+		JavascriptExecutor js = (JavascriptExecutor) this.driver;
+		String script_code = "document.querySelector(\"" + parent_level_button_selector + "\").scrollIntoView(true);";
+		while (element_exists) {
+			WebElement current_submenu_button = this.fluentWait(
+				current_submenu_locator, this.driver, 10, 1000L
+			);
+			item_to_be_ignored = this.submenuItemToBeIgnored(
+				current_submenu_button, item_under_second_submenu_selector.toString()
+			);
+			if (item_to_be_ignored) {
+				continue;
+			}
+			new Actions(this.driver)
+				.moveToElement(current_submenu_button)
+				.pause(Duration.ofMillis(200))
+				.click()
+				.pause(Duration.ofSeconds(2))
+				.perform();
+			WebElement see_all_button = this.fluentWaitTillVisibleandClickable(
+				see_all_link_locator, this.driver, 30, 1000L
+			);
+			new Actions(this.driver)
+				.moveToElement(see_all_button)
+				.pause(Duration.ofMillis(200))
+				.click()
+				.pause(Duration.ofSeconds(3))
+				.perform();
+			this.scrapeAllPrices(township);
+			js.executeScript("window.scrollTo(0, 0);");
+			WebElement parent_menu_button = this.fluentWait(
+				parent_level_button_locator,this.driver, 30, 1000L
+			);
+			new Actions(this.driver)
+				.moveToElement(parent_menu_button)
+				.pause(Duration.ofMillis(200))
+				.click()
+				.pause(Duration.ofSeconds(3))
+				.perform();
+			item_under_second_submenu_selector = this.incrementSelectorDigit(
+				item_under_second_submenu_selector, index_after_brackets
+			);
+			see_all_link_selector = this.incrementSelectorDigit(
+				see_all_link_selector, index_after_brackets
+			);
+			current_submenu_locator = new By.ByCssSelector(item_under_second_submenu_selector.toString());
+			see_all_link_locator = new By.ByCssSelector(see_all_link_selector.toString());
+			element_exists = this.elementExists(current_submenu_locator, this.driver, 10, 1000L);
+		}
 		this.driver.get(this.configurations.getProperty("url"));
 	}
 
