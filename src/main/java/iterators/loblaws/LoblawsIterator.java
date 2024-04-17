@@ -265,7 +265,25 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		return false;
 	}
 
+	private StringBuilder incrementSelectorDigit(final StringBuilder selector, int starting_index) {
+		assert (selector.toString().length() >= 3);
+		assert ((0 <= starting_index) && (starting_index < (selector.toString().length())));
+		StringBuilder new_selector = new StringBuilder(selector.toString());
+		int opening_brace_index = new_selector.indexOf("(", starting_index);
+		int closing_brace_index = new_selector.indexOf(")", opening_brace_index);
+		String number_between_brackets = new_selector.substring(
+			(opening_brace_index + 1), closing_brace_index
+		);
+		int translated_number = Integer.parseInt(number_between_brackets);
+		translated_number++;
+		new_selector.replace(
+			(opening_brace_index + 1), closing_brace_index, Integer.toString(translated_number)
+		);
+		return new_selector;
+	}
+
 	private StringBuilder incrementSelectorDigit(final StringBuilder selector) {
+		assert (selector.toString().length() >= 3);
 		StringBuilder new_selector = new StringBuilder(selector.toString());
 		int opening_brace_index = new_selector.indexOf("(");
 		int closing_brace_index = new_selector.indexOf(")", opening_brace_index);
@@ -281,8 +299,24 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 	}
 
 	private StringBuilder changeSelectorDigit(final StringBuilder selector, int digit) {
+		assert (selector.toString().length() >= 3);
 		StringBuilder new_selector = new StringBuilder(selector.toString());
 		int opening_brace_index = new_selector.indexOf("(");
+		int closing_brace_index = new_selector.indexOf(")", opening_brace_index);
+		String number_between_brackets = new_selector.substring(
+			(opening_brace_index + 1), closing_brace_index
+		);
+		new_selector.replace(
+			(opening_brace_index + 1), closing_brace_index, Integer.toString(digit)
+		);
+		return new_selector;
+	}
+
+	private StringBuilder changeSelectorDigit(final StringBuilder selector, int digit, int starting_index) {
+		assert (selector.toString().length() >= 3);
+		assert ((0 <= starting_index) && (starting_index < (selector.toString().length())));
+		StringBuilder new_selector = new StringBuilder(selector.toString());
+		int opening_brace_index = new_selector.indexOf("(", starting_index);
 		int closing_brace_index = new_selector.indexOf(")", opening_brace_index);
 		String number_between_brackets = new_selector.substring(
 			(opening_brace_index + 1), closing_brace_index
