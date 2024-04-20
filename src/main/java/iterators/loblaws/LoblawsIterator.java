@@ -9,6 +9,7 @@ import java.io.File;
 import java.io.IOException;
 import java.time.Duration;
 import org.openqa.selenium.Alert;
+import org.openqa.selenium.WindowType;
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.By;
 import org.openqa.selenium.Keys;
@@ -53,7 +54,7 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		}
 		this.driver = null;
 	}
-	
+
 	public HashMap<String, String> next() {
 		numbers.put(
 			Integer.toString(this.counter),
@@ -327,13 +328,76 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		return new_selector;
 	}
 
-	public void scrapeAllPrices(String city) {
-		List<HashMap<String, String>> prices = new ArrayList<HashMap<String, String>>();
-		StringBuilder product_label_selector = new StringBuilder(
-			this.configurations.getProperty("product_label_selector")
+	private HashMap<String, String> scrapeProductInfo(String township, StringBuilder product_info_link_selector) {
+		HashMap<String, String> product_info = new HashMap<>();
+		String brand_name_selector = this.configurations.getProperty("brand_name_selector");
+		String product_name_selector = this.configurations.getProperty("product_name_selector");
+		String package_size_selector = this.configurations.getProperty("package_size_selector");
+		String price_value_selector = this.configurations.getProperty("price_value_selector");
+		String price_unit_selector = this.configurations.getProperty("price_unit_selector");
+		String comparison_price_value_selector = this.configurations.getProperty(
+			"comparison_price_value_selector"
 		);
-		StringBuilder product_pricing_info_selector = new StringBuilder(
-			this.configurations.getProperty("product_pricing_info_selector")
+		String comparison_price_unit_selector = this.configurations.getProperty(
+			"comparison_price_unit_selector"
+		);
+		By product_info_link_locator = new By.ByCssSelector(product_info_link_selector.toString());
+		By brand_name_locator = new By.ByCssSelector(brand_name_selector);
+		By product_name_locator = new By.ByCssSelector(product_name_selector);
+		By package_size_locator = new By.ByCssSelector(package_size_selector);
+		By price_value_locator = new By.ByCssSelector(price_value_selector);
+		By price_unit_locator = new By.ByCssSelector(price_unit_selector);
+		By comparison_price_value_locator = new By.ByCssSelector(comparison_price_value_selector);
+		By comparison_price_unit_locator = new By.ByCssSelector(comparison_price_unit_selector);
+		WebElement product_info_link = this.fluentWait(
+			product_info_link_locator, this.driver, 10, 100L
+		);
+		String href_address = product_info_link.getAttribute("href");
+		String original_window = this.driver.getWindowHandle();
+		driver.switchTo().newWindow(WindowType.TAB);
+		driver.get(href_address);
+		WebElement product_name = this.fluentWait(product_name_locator, this.driver, 30, 100L);
+		WebElement price_value = this.fluentWait(price_value_locator, this.driver, 30, 100L);
+		WebElement price_unit = this.fluentWait(price_unit_locator, this.driver, 30, 100L);
+		String price_info = price_value.getText() + " " + price_unit.getText();
+		product_info.put("product name", product_name.getText());
+		product_info.put("price info", price_info);
+		product_info.put("Township location", township);
+		boolean brand_name_exists = this.elementExists(brand_name_locator, this.driver, 1, 100L);
+		boolean package_size_exists = this.elementExists(package_size_locator, this.driver, 1, 100L);
+		boolean comparison_price_value_exists = this.elementExists(
+			comparison_price_value_locator, this.driver, 2, 100L
+		);
+		boolean comparison_price_unit_exists = this.elementExists(
+			comparison_price_unit_locator, this.driver, 2, 100L
+		);
+		if (brand_name_exists) {
+			WebElement brand_name = this.driver.findElement(brand_name_locator);
+			product_info.put("brand name", brand_name.getText());
+		}
+		if (package_size_exists) {
+			WebElement package_size_info = this.driver.findElement(package_size_locator);
+			product_info.put("package size", package_size_info.getText());
+		}
+		if (comparison_price_value_exists && comparison_price_unit_exists) {
+			WebElement comparison_price_value = this.fluentWait(
+				comparison_price_value_locator, this.driver, 5, 100L
+			);
+			WebElement comparison_price_unit = this.fluentWait(
+				comparison_price_unit_locator, this.driver, 5, 100L
+			);
+			String comparison_unit_price = comparison_price_value.getText() + " " + comparison_price_unit.getText();
+			product_info.put("unit price for comparison", comparison_unit_price);
+		}
+		driver.close();
+		driver.switchTo().window(original_window);
+		return product_info;
+	}
+
+	private void scrapeAllPrices(String city) {
+		List<HashMap<String, String>> prices = new ArrayList<HashMap<String, String>>();
+		StringBuilder product_info_link_selector = new StringBuilder(
+			this.configurations.getProperty("product_separate_page_link_selector")
 		);
 		String pagination_selector = this.configurations.getProperty("nav_pagination_element_selector");
 		StringBuilder next_button_selector = new StringBuilder(
@@ -344,8 +408,6 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		);
 		By next_button_locator = new By.ByCssSelector(next_button_selector.toString());
 		By pagination_locator = new By.ByCssSelector(pagination_selector);
-		By product_label_locator = new By.ByCssSelector(product_label_selector.toString());
-		By product_price_info_locator = new By.ByCssSelector(product_pricing_info_selector.toString());
 		By product_parent_container_locator = new By.ByCssSelector(
 			product_parent_container_selector.toString()
 		);
@@ -355,6 +417,7 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		boolean pagination_exists;
 		String next_button_disabled;
 		JavascriptExecutor js = (JavascriptExecutor) this.driver;
+		WebElement product_parent_container;
 		while (next_button_interactable) {
 			if (at_bottom) {
 				WebElement next_button = this.fluentWait(
@@ -367,45 +430,27 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 					.click()
 					.pause(Duration.ofMillis(500))
 					.perform();
-				product_label_selector = this.changeSelectorDigit(product_label_selector, 1);
-				product_pricing_info_selector = this.changeSelectorDigit(
-					product_pricing_info_selector, 1
-				);
 				product_parent_container_selector = this.changeSelectorDigit(
 					product_parent_container_selector, 1
 				);
-				product_label_locator = new By.ByCssSelector(product_label_selector.toString());
-				product_price_info_locator = new By.ByCssSelector(product_pricing_info_selector.toString());
+				product_info_link_selector = this.changeSelectorDigit(
+					product_info_link_selector, 1
+				);
 				product_parent_container_locator = new By.ByCssSelector(
 					product_parent_container_selector.toString()
 				);
 			}
-			while (this.elementExists(product_label_locator, this.driver, 10, 500L)) {
-				WebElement product_label = this.fluentWait(
-					product_label_locator, this.driver, 5, 250L
-				);
-				String product_label_text = product_label.getText();
-				WebElement pricing_info = this.fluentWait(
-					product_price_info_locator, this.driver, 5, 250L
-				);
-				WebElement product_parent_container = this.fluentWait(
+			while (this.elementExists(product_parent_container_locator, this.driver, 10, 500L)) {
+				product_parent_container = this.fluentWait(
 					product_parent_container_locator, this.driver, 5, 250L
 				);
-				String script_code = "document.querySelector(\"" + product_parent_container_selector.toString() + "\").scrollIntoView(true);";
-				js.executeScript(script_code);
-				String pricing_info_text = pricing_info.getText();
-				price_data = new HashMap<>();
-				price_data.put("product_label", product_label_text);
-				price_data.put("product_price_info", pricing_info_text);
-				price_data.put("city_of_given_price", city);
+				js.executeScript("arguments[0].scrollIntoView(true);", product_parent_container);
+				price_data = this.scrapeProductInfo(city, product_info_link_selector);
 				prices.add(price_data);
-				product_label_selector = this.incrementSelectorDigit(product_label_selector);
-				product_pricing_info_selector = this.incrementSelectorDigit(product_pricing_info_selector);
 				product_parent_container_selector = this.incrementSelectorDigit(
 					product_parent_container_selector
 				);
-				product_label_locator = new By.ByCssSelector(product_label_selector.toString());
-				product_price_info_locator = new By.ByCssSelector(product_pricing_info_selector.toString());
+				product_info_link_selector = this.incrementSelectorDigit(product_info_link_selector);
 				product_parent_container_locator = new By.ByCssSelector(
 					product_parent_container_selector.toString()
 				);
