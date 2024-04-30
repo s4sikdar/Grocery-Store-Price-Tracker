@@ -221,14 +221,16 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 
 	private boolean menuItemToBeIgnored(WebElement element) {
 		String element_text = element.getText();
-		String main_menu_items_to_select = this.configurations.getProperty("main_menu_items_to_select");
-		String[] items_to_select = main_menu_items_to_select.split(",");
-		for (int index = 0; index < items_to_select.length; index++) {
-			if (element_text.indexOf(items_to_select[index]) >= 0) {
-				return false;
+		boolean string_is_contained;
+		String main_menu_items_to_ignore = this.configurations.getProperty("main_menu_items_to_ignore");
+		String[] items_to_ignore = main_menu_items_to_ignore.split(",");
+		for (String item_to_ignore: items_to_ignore) {
+			string_is_contained = element_text.toLowerCase().contains(item_to_ignore.toLowerCase());
+			if (string_is_contained) {
+				return true;
 			}
 		}
-		return true;
+		return false;
 	}
 
 	private boolean submenuItemToBeIgnored(WebElement element, String css_selector) {
@@ -530,103 +532,152 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		boolean menu_item_to_select;
 		boolean submenu_item_to_ignore;
 		boolean submenu_item_exists;
+		boolean main_menu_item_exists;
+		boolean main_menu_item_to_ignore;
 		int submenu_li_child_index;
+		WebElement main_menu_item;
 		JavascriptExecutor js = (JavascriptExecutor) this.driver;
-		String main_menu_item_selector = this.configurations.getProperty("main_menu_item_selector");
-		StringBuilder submenu_item_selector_in_main_menu = new StringBuilder(this.configurations.getProperty(
-			"submenu_item_selector_in_main_menu"
-		));
+		StringBuilder main_menu_item_selector = new StringBuilder(
+			this.configurations.getProperty("main_menu_item_selector")
+		);
+		StringBuilder submenu_item_selector_in_main_menu = new StringBuilder(
+			this.configurations.getProperty("submenu_item_selector_in_main_menu")
+		);
 		submenu_li_child_index = this.getNumFromConfigurationsFile("starting_index_for_submenu_item");
 		index_after_brackets = this.getNumFromConfigurationsFile("index_after_first_bracket");
 		By submenu_item_locator = new By.ByCssSelector(submenu_item_selector_in_main_menu.toString());
+		By main_menu_item_locator = new By.ByCssSelector(main_menu_item_selector.toString());
 		this.changeLocation(township);
-		WebElement main_menu_item = this.fluentWait(
-			new By.ByCssSelector(main_menu_item_selector),
-			this.driver, 30, 1000L
+		main_menu_item_exists = this.elementExistsAndIsInteractable(
+			main_menu_item_locator, this.driver, 5, 100L
 		);
-		new Actions(this.driver).moveToElement(main_menu_item).pause(Duration.ofMillis(200)).click().perform();
-		submenu_item_exists = this.elementExistsAndIsInteractable(submenu_item_locator, this.driver, 30, 100L);
-		while (submenu_item_exists) {
-			WebElement submenu_item = this.fluentWait(submenu_item_locator, this.driver, 30, 1000L);
-			submenu_item_to_ignore = this.submenuItemToBeIgnored(
-				submenu_item, submenu_item_selector_in_main_menu.toString()
-			);
-			if (!submenu_item_to_ignore) {
-				new Actions(this.driver)
-					.moveToElement(submenu_item)
-					.pause(Duration.ofMillis(200))
-					.click().perform();
-				StringBuilder item_under_second_submenu_selector = new StringBuilder(
-					this.configurations.getProperty("item_under_second_submenu")
+		while (main_menu_item_exists) {
+			main_menu_item = this.fluentWait(main_menu_item_locator, this.driver, 30, 1000L);
+			main_menu_item_to_ignore = this.menuItemToBeIgnored(main_menu_item);
+			if (main_menu_item_to_ignore) {
+				submenu_item_selector_in_main_menu = this.incrementSelectorDigit(
+					submenu_item_selector_in_main_menu
 				);
-				StringBuilder see_all_link_selector = new StringBuilder(
-					this.configurations.getProperty("see_all_link_selector")
+				submenu_item_selector_in_main_menu = this.changeSelectorDigit(
+					submenu_item_selector_in_main_menu, 1, submenu_li_child_index
 				);
-				String parent_level_button_selector = this.configurations.getProperty(
-					"parent_submenu_subcategory_button_selector"
+				submenu_item_locator = new By.ByCssSelector(
+					submenu_item_selector_in_main_menu.toString()
 				);
-				By current_submenu_locator = new By.ByCssSelector(
-					item_under_second_submenu_selector.toString()
+				main_menu_item_selector = this.incrementSelectorDigit(main_menu_item_selector);
+				main_menu_item_locator = new By.ByCssSelector(main_menu_item_selector.toString());
+				main_menu_item_exists = this.elementExistsAndIsInteractable(
+					main_menu_item_locator, this.driver, 5, 100L
 				);
-				By see_all_link_locator = new By.ByCssSelector(see_all_link_selector.toString());
-				By parent_level_button_locator = new By.ByCssSelector(parent_level_button_selector);
-				boolean element_exists = this.elementExists(current_submenu_locator, this.driver, 10, 1000L);
-				while (element_exists) {
-					WebElement current_submenu_button = this.fluentWait(
-						current_submenu_locator, this.driver, 10, 1000L
-					);
-					js.executeScript(
-						"arguments[0].scrollIntoView(false);", current_submenu_button
-					);
-					new Actions(this.driver)
-						.moveToElement(current_submenu_button)
-						.pause(Duration.ofMillis(200))
-						.click()
-						.pause(Duration.ofSeconds(2))
-						.perform();
-					WebElement see_all_button = this.fluentWaitTillVisibleandClickable(
-						see_all_link_locator, this.driver, 30, 1000L
-					);
-					js.executeScript(
-						"arguments[0].scrollIntoView(false);", see_all_button
-					);
-					new Actions(this.driver)
-						.moveToElement(see_all_button)
-						.pause(Duration.ofMillis(200))
-						.click()
-						.pause(Duration.ofSeconds(3))
-						.perform();
-					this.scrapeAllPrices(township);
-					js.executeScript("window.scrollTo(0, 0);");
-					WebElement parent_menu_button = this.fluentWait(
-						parent_level_button_locator,this.driver, 30, 1000L
-					);
-					new Actions(this.driver)
-						.moveToElement(parent_menu_button)
-						.pause(Duration.ofMillis(200))
-						.click()
-						.pause(Duration.ofSeconds(3))
-						.perform();
-					item_under_second_submenu_selector = this.incrementSelectorDigit(
-						item_under_second_submenu_selector, index_after_brackets
-					);
-					see_all_link_selector = this.incrementSelectorDigit(
-						see_all_link_selector, index_after_brackets
-					);
-					current_submenu_locator = new By.ByCssSelector(item_under_second_submenu_selector.toString());
-					see_all_link_locator = new By.ByCssSelector(see_all_link_selector.toString());
-					element_exists = this.elementExists(current_submenu_locator, this.driver, 10, 1000L);
-				}
+				continue;
 			}
-			submenu_item_selector_in_main_menu = this.incrementSelectorDigit(
-				submenu_item_selector_in_main_menu, submenu_li_child_index
-			);
-			submenu_item_locator = new By.ByCssSelector(submenu_item_selector_in_main_menu.toString());
-			js.executeScript("window.scrollTo(0, 0);");
 			new Actions(this.driver)
 				.moveToElement(main_menu_item)
 				.pause(Duration.ofMillis(200)).click().perform();
-			submenu_item_exists = this.elementExistsAndIsInteractable(submenu_item_locator, this.driver, 30, 100L);
+			submenu_item_exists = this.elementExistsAndIsInteractable(
+				submenu_item_locator, this.driver, 30, 100L
+			);
+			while (submenu_item_exists) {
+				WebElement submenu_item = this.fluentWait(submenu_item_locator, this.driver, 30, 1000L);
+				submenu_item_to_ignore = this.submenuItemToBeIgnored(
+					submenu_item, submenu_item_selector_in_main_menu.toString()
+				);
+				if (!submenu_item_to_ignore) {
+					js.executeScript(
+						"arguments[0].scrollIntoView(false);", submenu_item
+					);
+					new Actions(this.driver)
+						.moveToElement(submenu_item)
+						.pause(Duration.ofMillis(200))
+						.click().perform();
+					StringBuilder item_under_second_submenu_selector = new StringBuilder(
+						this.configurations.getProperty("item_under_second_submenu")
+					);
+					StringBuilder see_all_link_selector = new StringBuilder(
+						this.configurations.getProperty("see_all_link_selector")
+					);
+					String parent_level_button_selector = this.configurations.getProperty(
+						"parent_submenu_subcategory_button_selector"
+					);
+					By current_submenu_locator = new By.ByCssSelector(
+						item_under_second_submenu_selector.toString()
+					);
+					By see_all_link_locator = new By.ByCssSelector(see_all_link_selector.toString());
+					By parent_level_button_locator = new By.ByCssSelector(parent_level_button_selector);
+					boolean element_exists = this.elementExists(
+						current_submenu_locator, this.driver, 10, 1000L
+					);
+					while (element_exists) {
+						WebElement current_submenu_button = this.fluentWait(
+							current_submenu_locator, this.driver, 10, 1000L
+						);
+						js.executeScript(
+							"arguments[0].scrollIntoView(false);", current_submenu_button
+						);
+						new Actions(this.driver)
+							.moveToElement(current_submenu_button)
+							.pause(Duration.ofMillis(200))
+							.click()
+							.pause(Duration.ofSeconds(2))
+							.perform();
+						WebElement see_all_button = this.fluentWaitTillVisibleandClickable(
+							see_all_link_locator, this.driver, 30, 1000L
+						);
+						js.executeScript(
+							"arguments[0].scrollIntoView(false);", see_all_button
+						);
+						new Actions(this.driver)
+							.moveToElement(see_all_button)
+							.pause(Duration.ofMillis(200))
+							.click()
+							.pause(Duration.ofSeconds(3))
+							.perform();
+						this.scrapeAllPrices(township);
+						js.executeScript("window.scrollTo(0, 0);");
+						WebElement parent_menu_button = this.fluentWait(
+							parent_level_button_locator,this.driver, 30, 1000L
+						);
+						new Actions(this.driver)
+							.moveToElement(parent_menu_button)
+							.pause(Duration.ofMillis(200))
+							.click()
+							.pause(Duration.ofSeconds(3))
+							.perform();
+						item_under_second_submenu_selector = this.incrementSelectorDigit(
+							item_under_second_submenu_selector, index_after_brackets
+						);
+						see_all_link_selector = this.incrementSelectorDigit(
+							see_all_link_selector, index_after_brackets
+						);
+						current_submenu_locator = new By.ByCssSelector(
+							item_under_second_submenu_selector.toString()
+						);
+						see_all_link_locator = new By.ByCssSelector(see_all_link_selector.toString());
+						element_exists = this.elementExists(
+							current_submenu_locator, this.driver, 10, 1000L
+						);
+					}
+				}
+				submenu_item_selector_in_main_menu = this.incrementSelectorDigit(
+					submenu_item_selector_in_main_menu, submenu_li_child_index
+				);
+				submenu_item_locator = new By.ByCssSelector(submenu_item_selector_in_main_menu.toString());
+				js.executeScript("window.scrollTo(0, 0);");
+				new Actions(this.driver)
+					.moveToElement(main_menu_item)
+					.pause(Duration.ofMillis(200)).click().perform();
+				submenu_item_exists = this.elementExistsAndIsInteractable(submenu_item_locator, this.driver, 30, 100L);
+			}
+			submenu_item_selector_in_main_menu = this.incrementSelectorDigit(
+				submenu_item_selector_in_main_menu
+			);
+			submenu_item_selector_in_main_menu = this.changeSelectorDigit(
+				submenu_item_selector_in_main_menu, 1, submenu_li_child_index
+			);
+			submenu_item_locator = new By.ByCssSelector(submenu_item_selector_in_main_menu.toString());
+			main_menu_item_selector = this.incrementSelectorDigit(main_menu_item_selector);
+			main_menu_item_locator = new By.ByCssSelector(main_menu_item_selector.toString());
+			main_menu_item_exists = this.elementExistsAndIsInteractable(main_menu_item_locator, this.driver, 5, 100L);
 		}
 		this.driver.get(this.configurations.getProperty("url"));
 	}
