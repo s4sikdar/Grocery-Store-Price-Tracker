@@ -68,6 +68,51 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		return (this.counter <= this.limit);
 	}
 
+	/**
+	 * pauseThenClick: a private helper method that moves the mouse over an element (passed in), pauses
+	 * for a duration of milliseconds (passed in parameter), and then clicks the element
+	 * - it first scrolls the element into view using the org.openqa.selenium.JavascriptExecutor class
+	 *   via the executeScript method (necessary if the element is not currently in the viewport)
+	 * @param element - the element you want to hover and click on (is an instance of
+	 * org.openqa.selenium.WebElement)
+	 * @param pause_timeout - an integer representing the number of milliseconds to pause 
+	 * (using Duration.ofMillis)
+	 * @return - returns nothing (void)
+	 * */
+	private void pauseThenClick(webElement element, int pause_timeout) {
+		JavascriptExecutor js = (JavascriptExecutor) this.driver;
+		js.executeScript("arguments[0].scrollIntoView(false);", element);
+		new Actions(this.driver)
+			.moveToElement(element)
+			.pause(Duration.ofMillis(pause_timeout))
+			.click().perform();
+	}
+
+	/**
+	 * pauseThenClickThenPause: a private helper method that moves the mouse over an element (passed in),
+	 * pauses for a duration of milliseconds (passed in parameter), and then clicks the element
+	 * - it first scrolls the element into view using the org.openqa.selenium.JavascriptExecutor class
+	 *   via the executeScript method (necessary if the element is not currently in the viewport)
+	 * @param element - the element you want to hover and click on (is an instance of
+	 * org.openqa.selenium.WebElement)
+	 * @param pause_timeout - an integer representing the number of milliseconds to pause 
+	 * (using Duration.ofMillis)
+	 * @param post_click_timeout - an integer representing the number of milliseconds to pause 
+	 * (using Duration.ofMillis) after clicking the element
+	 * @return - returns nothing (void)
+	 * */
+	private void pauseThenClickThenPause(webElement element, int pause_timeout, int post_click_timeout) {
+		JavascriptExecutor js = (JavascriptExecutor) this.driver;
+		js.executeScript("arguments[0].scrollIntoView(false);", element);
+		new Actions(this.driver)
+			.moveToElement(element)
+			.pause(Duration.ofMillis(pause_timeout))
+			.click()
+			.pause(Duration.ofMillis(post_click_timeout))
+			.perform();
+	}
+
+
 	// Code was taken from below stackoverflow link:
 	// https://stackoverflow.com/questions/12858972/how-can-i-ask-the-selenium-webdriver-to-wait-for-few-seconds-in-java
 	public WebElement fluentWait(final By locator, WebDriver driver, int timeout_duration, long polling_duration) {
@@ -97,7 +142,7 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		return element_in_question;
 	}
 
-	public boolean elementExists(final By locator, WebDriver driver, int timeout_duration, long polling_duration) {
+	private boolean elementExists(final By locator, WebDriver driver, int timeout_duration, long polling_duration) {
 		try {
 			WebElement element_to_find = this.fluentWait(
 				locator, driver, timeout_duration, polling_duration
@@ -112,7 +157,7 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		}
 	}
 
-	public boolean elementExistsAndIsInteractable(final By locator, WebDriver driver, int timeout_duration, long polling_duration) {
+	private boolean elementExistsAndIsInteractable(final By locator, WebDriver driver, int timeout_duration, long polling_duration) {
 		try {
 			WebElement element_to_find = this.fluentWaitTillVisibleandClickable(
 				locator, driver, timeout_duration, polling_duration
@@ -127,7 +172,7 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		}
 	}
 
-	public void getAllCities() throws InterruptedException {
+	private void getAllCities() throws InterruptedException {
 		String location_button_selector = this.configurations.getProperty("location_button");
 		String change_location_selector = this.configurations.getProperty("change_location_button");
 		WebElement location_button = this.fluentWait(
@@ -196,7 +241,7 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 
 	}
 
-	public void tryClickingElement(
+	private void tryClickingElement(
 		final By locator, WebDriver driver, int timeout_duration, long polling_duration
 	) {
 		try {
@@ -434,11 +479,7 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 				);
 				// Below javascript code from: https://stackoverflow.com/questions/42982950/how-to-scroll-down-the-page-till-bottomend-page-in-the-selenium-webdriver
 				js.executeScript("window.scrollTo(0, document.body.scrollHeight);");
-				new Actions(this.driver)
-					.moveToElement(next_button)
-					.click()
-					.pause(Duration.ofMillis(500))
-					.perform();
+				this.pauseThenClick(next_button, 500);
 				product_parent_container_selector = this.changeSelectorDigit(
 					product_parent_container_selector, 1
 				);
@@ -583,13 +624,7 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 					submenu_item, submenu_item_selector_in_main_menu.toString()
 				);
 				if (!submenu_item_to_ignore) {
-					js.executeScript(
-						"arguments[0].scrollIntoView(false);", submenu_item
-					);
-					new Actions(this.driver)
-						.moveToElement(submenu_item)
-						.pause(Duration.ofMillis(200))
-						.click().perform();
+					this.pauseThenClick(submenu_item, 200);
 					StringBuilder item_under_second_submenu_selector = new StringBuilder(
 						this.configurations.getProperty("item_under_second_submenu")
 					);
@@ -611,38 +646,17 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 						WebElement current_submenu_button = this.fluentWait(
 							current_submenu_locator, this.driver, 10, 1000L
 						);
-						js.executeScript(
-							"arguments[0].scrollIntoView(false);", current_submenu_button
-						);
-						new Actions(this.driver)
-							.moveToElement(current_submenu_button)
-							.pause(Duration.ofMillis(200))
-							.click()
-							.pause(Duration.ofSeconds(2))
-							.perform();
+						this.pauseThenClickThenPause(current_submenu_button, 200, 200);
 						WebElement see_all_button = this.fluentWaitTillVisibleandClickable(
 							see_all_link_locator, this.driver, 30, 1000L
 						);
-						js.executeScript(
-							"arguments[0].scrollIntoView(false);", see_all_button
-						);
-						new Actions(this.driver)
-							.moveToElement(see_all_button)
-							.pause(Duration.ofMillis(200))
-							.click()
-							.pause(Duration.ofSeconds(3))
-							.perform();
+						this.pauseThenClickThenPause(see_all_button, 200, 300);
 						this.scrapeAllPrices(township);
 						js.executeScript("window.scrollTo(0, 0);");
 						WebElement parent_menu_button = this.fluentWait(
 							parent_level_button_locator,this.driver, 30, 1000L
 						);
-						new Actions(this.driver)
-							.moveToElement(parent_menu_button)
-							.pause(Duration.ofMillis(200))
-							.click()
-							.pause(Duration.ofSeconds(3))
-							.perform();
+						this.pauseThenClickThenPause(parent_menu_button, 200, 300);
 						item_under_second_submenu_selector = this.incrementSelectorDigit(
 							item_under_second_submenu_selector, index_after_brackets
 						);
@@ -663,9 +677,7 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 				);
 				submenu_item_locator = new By.ByCssSelector(submenu_item_selector_in_main_menu.toString());
 				js.executeScript("window.scrollTo(0, 0);");
-				new Actions(this.driver)
-					.moveToElement(main_menu_item)
-					.pause(Duration.ofMillis(200)).click().perform();
+				this.pauseThenClick(main_menu_item, 200);
 				submenu_item_exists = this.elementExistsAndIsInteractable(submenu_item_locator, this.driver, 30, 100L);
 			}
 			submenu_item_selector_in_main_menu = this.incrementSelectorDigit(
