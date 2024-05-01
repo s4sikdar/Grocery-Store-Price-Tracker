@@ -39,6 +39,7 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 	private WebDriver driver;
 	private HashMap<String, Boolean> cities;
 
+
 	public LoblawsIterator(String config_file_path, int count, int limit) {
 		this.counter = count;
 		this.limit = limit;
@@ -55,6 +56,7 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		this.driver = null;
 	}
 
+
 	public HashMap<String, String> next() {
 		numbers.put(
 			Integer.toString(this.counter),
@@ -64,9 +66,11 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		return numbers;
 	}
 
+
 	public boolean hasNext() {
 		return (this.counter <= this.limit);
 	}
+
 
 	/**
 	 * pauseThenClick: a private helper method that moves the mouse over an element (passed in), pauses
@@ -75,7 +79,7 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 	 *   via the executeScript method (necessary if the element is not currently in the viewport)
 	 * @param element - the element you want to hover and click on (is an instance of
 	 * org.openqa.selenium.WebElement)
-	 * @param pause_timeout - an integer representing the number of milliseconds to pause 
+	 * @param pause_timeout - an integer representing the number of milliseconds to pause
 	 * (using Duration.ofMillis)
 	 * @return - returns nothing (void)
 	 * */
@@ -88,6 +92,7 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 			.click().perform();
 	}
 
+
 	/**
 	 * pauseThenClickThenPause: a private helper method that moves the mouse over an element (passed in),
 	 * pauses for a duration of milliseconds (passed in parameter), and then clicks the element
@@ -95,9 +100,9 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 	 *   via the executeScript method (necessary if the element is not currently in the viewport)
 	 * @param element - the element you want to hover and click on (is an instance of
 	 * org.openqa.selenium.WebElement)
-	 * @param pause_timeout - an integer representing the number of milliseconds to pause 
+	 * @param pause_timeout - an integer representing the number of milliseconds to pause
 	 * (using Duration.ofMillis)
-	 * @param post_click_timeout - an integer representing the number of milliseconds to pause 
+	 * @param post_click_timeout - an integer representing the number of milliseconds to pause
 	 * (using Duration.ofMillis) after clicking the element
 	 * @return - returns nothing (void)
 	 * */
@@ -113,14 +118,27 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 	}
 
 
-	// Code was taken from below stackoverflow link:
-	// https://stackoverflow.com/questions/12858972/how-can-i-ask-the-selenium-webdriver-to-wait-for-few-seconds-in-java
-	public WebElement fluentWait(final By locator, WebDriver driver, int timeout_duration, long polling_duration) {
+	/**
+	 * fluentWait - a private helper method that waits for an element to be available, and then returns
+	 * a reference to the element
+	 * The code was taken from the below stackoverflow link:
+	 * https://stackoverflow.com/questions/12858972/how-can-i-ask-the-selenium-webdriver-to-wait-for-few-seconds-in-java
+	 * @param locator - the locator that you will use to locate the element (this is an instance of
+	 * org.openqa.selenium.By)
+	 * @param driver - an instance of org.openqa.selenium.WebDriver representing a reference to the
+	 * webdriver used
+	 * @param timeout_duration - an integer that represents how long to wait for the element in seconds
+	 * @param polling_duration - an instance of java.lang.Long that represents how long to wait for
+	 * the element in milliseconds
+	 * @return an instance of the web element that you are looking to find with the locator parameter
+	 * @throws org.openqa.selenium.NoSuchElementException (throws this exception if the element is not
+	 * found in timeout_duration number of seconds)
+	 * */
+	private WebElement fluentWait(final By locator, WebDriver driver, int timeout_duration, long polling_duration) {
 		Wait<WebDriver> wait = new FluentWait<WebDriver>(driver)
 		    .withTimeout(Duration.ofSeconds(timeout_duration))
 		    .pollingEvery(Duration.ofMillis(polling_duration))
 		    .ignoring(NoSuchElementException.class);
-
 		WebElement foo = wait.until(new Function<WebDriver, WebElement>() {
 			public WebElement apply(WebDriver driver) {
 			    return driver.findElement(locator);
@@ -129,11 +147,28 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		return foo;
 	};
 
-	public WebElement fluentWaitTillVisibleandClickable(final By locator, WebDriver driver, int timeout_duration, long polling_duration) {
+
+	/**
+	 * fluentWaitTillVisibleandClickable - a private helper method that waits for an element to be
+	 * present in the Document Object Model of an HTML page as well as visible (visible on the page
+	 * and having a height and width being greater than 0), then returning a reference to the element
+	 * The code was taken from the below stackoverflow link:
+	 * https://stackoverflow.com/questions/12858972/how-can-i-ask-the-selenium-webdriver-to-wait-for-few-seconds-in-java
+	 * @param locator - the locator that you will use to locate the element (this is an instance of
+	 * org.openqa.selenium.By)
+	 * @param driver - an instance of org.openqa.selenium.WebDriver representing a reference to the
+	 * webdriver used
+	 * @param timeout_duration - an integer that represents how long to wait for the element in seconds
+	 * @param polling_duration - an instance of java.lang.Long that represents how long to wait for
+	 * the element in milliseconds
+	 * @return an instance of the web element that you are looking to find with the locator parameter
+	 * @throws org.openqa.selenium.NoSuchElementException (throws this exception if the element is not
+	 * found in timeout_duration number of seconds)
+	 * */
+	private WebElement fluentWaitTillVisibleandClickable(final By locator, WebDriver driver, int timeout_duration, long polling_duration) {
 		WebDriverWait wait = new WebDriverWait(
 			driver, Duration.ofSeconds(timeout_duration), Duration.ofMillis(polling_duration)
 		);
-
 		wait.until(ExpectedConditions.and(
 			ExpectedConditions.presenceOfElementLocated(locator),
 			ExpectedConditions.visibilityOfElementLocated(locator)
@@ -142,6 +177,19 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		return element_in_question;
 	}
 
+
+	/**
+	 * elementExists - a private helper method that waits for an element to be available, and then
+	 * returns true if the element is found within the given timeout duration, returns false otherwise
+	 * @param locator - the locator that you will use to locate the element (this is an instance of
+	 * org.openqa.selenium.By)
+	 * @param driver - an instance of org.openqa.selenium.WebDriver representing a reference to the
+	 * webdriver used
+	 * @param timeout_duration - an integer that represents how long to wait for the element in seconds
+	 * @param polling_duration - an instance of java.lang.Long that represents how long to wait for
+	 * the element in milliseconds
+	 * @return true if the element was found, false otherwise
+	 * */
 	private boolean elementExists(final By locator, WebDriver driver, int timeout_duration, long polling_duration) {
 		try {
 			WebElement element_to_find = this.fluentWait(
@@ -157,6 +205,22 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		}
 	}
 
+
+	/**
+	 * elementExistsAndIsInteractable - a private helper method that waits for an element to be
+	 * present in the Document Object Model of an HTML page as well as visible (visible on the page
+	 * and having a height and width being greater than 0)
+	 * - then returns true if the element is found within the given time out duration
+	 *   (returns false otherwise)
+	 * @param locator - the locator that you will use to locate the element (this is an instance of
+	 * org.openqa.selenium.By)
+	 * @param driver - an instance of org.openqa.selenium.WebDriver representing a reference to the
+	 * webdriver used
+	 * @param timeout_duration - an integer that represents how long to wait for the element in seconds
+	 * @param polling_duration - an instance of java.lang.Long that represents how long to wait for
+	 * the element in milliseconds
+	 * @return true if the element was found, false otherwise
+	 * */
 	private boolean elementExistsAndIsInteractable(final By locator, WebDriver driver, int timeout_duration, long polling_duration) {
 		try {
 			WebElement element_to_find = this.fluentWaitTillVisibleandClickable(
