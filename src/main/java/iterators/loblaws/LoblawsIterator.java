@@ -236,6 +236,49 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		}
 	}
 
+
+	/**
+	 * tryClickingElement - a private method to try and click an element you wish to find with
+	 * the locator parameter as the locator
+	 * - It will first try to find and then click the element, and if an error is thrown it checks if
+	 *   the element is there
+	 * - If the element is not there, then do nothing, otherwise get the element and try to click on it
+	 *   using an ActionChain (throw the error if this fails)
+	 * @param locator - the locator that you will use to locate the element (this is an instance of
+	 * org.openqa.selenium.By)
+	 * @param driver - an instance of org.openqa.selenium.WebDriver representing a reference to the
+	 * webdriver used
+	 * @param timeout_duration - an integer that represents how long to wait for the element in seconds
+	 * @param polling_duration - an instance of java.lang.Long that represents how long to wait for
+	 * the element in milliseconds
+	 * @return - returns nothing (void)
+	 * @throws org.openqa.selenium.interactions.MoveTargetOutOfBoundsException if the element is not in
+	 * the viewport (when running Actions(driver).moveToElement(target_element).click().perform();)
+	 * */
+	private void tryClickingElement(
+		final By locator, WebDriver driver, int timeout_duration, long polling_duration
+	) {
+		try {
+			WebElement element_in_question = this.fluentWait(locator, driver, timeout_duration, polling_duration);
+			element_in_question.click();
+		} catch (Throwable err) {
+			boolean element_still_there = this.elementExists(
+				locator, driver, timeout_duration, polling_duration
+			);
+			if (element_still_there) {
+				WebElement target_element = this.fluentWait(
+					locator, driver, timeout_duration, polling_duration
+				);
+				try {
+					new Actions(driver).moveToElement(target_element).click().perform();
+				} catch (Throwable second_err) {
+					throw second_err;
+				}
+			}
+		}
+	}
+
+
 	private void getAllCities() throws InterruptedException {
 		String location_button_selector = this.configurations.getProperty("location_button");
 		String change_location_selector = this.configurations.getProperty("change_location_button");
@@ -305,28 +348,6 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 
 	}
 
-	private void tryClickingElement(
-		final By locator, WebDriver driver, int timeout_duration, long polling_duration
-	) {
-		try {
-			WebElement element_in_question = this.fluentWait(locator, driver, timeout_duration, polling_duration);
-			element_in_question.click();
-		} catch (Throwable err) {
-			boolean element_still_there = this.elementExists(
-				locator, driver, timeout_duration, polling_duration
-			);
-			if (element_still_there) {
-				WebElement target_element = this.fluentWait(
-					locator, driver, timeout_duration, polling_duration
-				);
-				try {
-					new Actions(this.driver).moveToElement(target_element).click();
-				} catch (Throwable second_err) {
-					throw second_err;
-				}
-			}
-		}
-	}
 
 	private boolean menuItemToBeIgnored(WebElement element) {
 		String element_text = element.getText();
