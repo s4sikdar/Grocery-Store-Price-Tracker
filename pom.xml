@@ -29,6 +29,11 @@
             <artifactId>selenium-devtools-v85</artifactId>
             <version>4.19.0</version>
         </dependency>
+	<dependency>
+	    <groupId>com.thoughtworks.xstream</groupId>
+	    <artifactId>xstream</artifactId>
+	    <version>1.4.18</version>
+	</dependency>
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>

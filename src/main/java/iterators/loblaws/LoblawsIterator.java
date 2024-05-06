@@ -57,21 +57,6 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 	}
 
 
-	public HashMap<String, String> next() {
-		numbers.put(
-			Integer.toString(this.counter),
-			"Current counter is " + this.counter + ", limit is " + Integer.toString(this.limit)
-		);
-		this.counter++;
-		return numbers;
-	}
-
-
-	public boolean hasNext() {
-		return (this.counter <= this.limit);
-	}
-
-
 	/**
 	 * pauseThenClick: a private helper method that moves the mouse over an element (passed in), pauses
 	 * for a duration of milliseconds (passed in parameter), and then clicks the element
@@ -83,7 +68,7 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 	 * (using Duration.ofMillis)
 	 * @return - returns nothing (void)
 	 * */
-	private void pauseThenClick(webElement element, int pause_timeout) {
+	private void pauseThenClick(WebElement element, int pause_timeout) {
 		JavascriptExecutor js = (JavascriptExecutor) this.driver;
 		js.executeScript("arguments[0].scrollIntoView(false);", element);
 		new Actions(this.driver)
@@ -106,7 +91,7 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 	 * (using Duration.ofMillis) after clicking the element
 	 * @return - returns nothing (void)
 	 * */
-	private void pauseThenClickThenPause(webElement element, int pause_timeout, int post_click_timeout) {
+	private void pauseThenClickThenPause(WebElement element, int pause_timeout, int post_click_timeout) {
 		JavascriptExecutor js = (JavascriptExecutor) this.driver;
 		js.executeScript("arguments[0].scrollIntoView(false);", element);
 		new Actions(this.driver)
@@ -796,5 +781,20 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		}
 		this.driver.quit();
 		return this.configurations.getProperty("url");
+	}
+
+
+	public HashMap<String, String> next() {
+		numbers.put(
+			Integer.toString(this.counter),
+			"Current counter is " + this.counter + ", limit is " + Integer.toString(this.limit)
+		);
+		this.counter++;
+		return numbers;
+	}
+
+
+	public boolean hasNext() {
+		return (this.counter <= this.limit);
 	}
 }
