@@ -83,25 +83,27 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 	 * @return - returns nothing (void)
 	 * */
 	private void openProductXmlStream() {
+		boolean file_already_exists;
 		String xml_filename = this.configurations.getProperty("data_xml_filename");
 		String root_tag = this.configurations.getProperty("root_xml_tag");
 		String currentPath = System.getProperty("user.dir");
 		Path pwd = Paths.get(currentPath);
-		pwd = pwd.resolve("config");
 		Path xml_path = pwd.resolve(xml_filename);
 		XMLOutputFactory xmlOutputFactory = XMLOutputFactory.newInstance();
 		try {
 			File xml_file = new File(xml_path.toString());
-			xml_file.createNewFile();
+			file_already_exists = !(xml_file.createNewFile());
 			this.xml_ostream = new FileOutputStream(xml_file, true);
 			this.xml_istream = new FileInputStream(xml_file);
 			this.xml_event_writer = xmlOutputFactory.createXMLEventWriter(this.xml_ostream, "UTF-8");
 			this.xml_event_factory = XMLEventFactory.newInstance();
 			this.xml_endline = this.xml_event_factory.createDTD("\n");
-			StartDocument start_document = this.xml_event_factory.createStartDocument();
-			this.xml_event_writer.add(start_document);
-			this.xml_event_writer.add(this.xml_endline);
 			StartElement root_element = this.xml_event_factory.createStartElement("", "", root_tag);
+			StartDocument start_document = this.xml_event_factory.createStartDocument();
+			if (!file_already_exists) {
+				this.xml_event_writer.add(start_document);
+				this.xml_event_writer.add(this.xml_endline);
+			}
 			this.xml_event_writer.add(root_element);
 			this.xml_event_writer.add(this.xml_endline);
 		} catch (Throwable t) {
