@@ -19,6 +19,7 @@ drivers/
 
 # the xml files in config directory
 config/*.xml
+config/*.properties
 
 # Package Files #
 *.jar
