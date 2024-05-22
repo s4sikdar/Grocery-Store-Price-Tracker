@@ -17,6 +17,9 @@ target/
 # The directory with webdriver binaries
 drivers/
 
+# the xml files in config directory
+config/*.xml
+
 # Package Files #
 *.jar
 *.war

@@ -4,8 +4,11 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.File;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.io.IOException;
 import java.time.Duration;
 import org.openqa.selenium.Alert;
@@ -28,7 +31,18 @@ import org.openqa.selenium.support.ui.Wait;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.openqa.selenium.support.ui.FluentWait;
 import org.openqa.selenium.support.ui.ExpectedConditions;
+import javax.xml.stream.XMLEventFactory;
+import javax.xml.stream.XMLEventWriter;
+import javax.xml.stream.XMLOutputFactory;
+import javax.xml.stream.XMLStreamException;
+import javax.xml.stream.events.Characters;
+import javax.xml.stream.events.EndElement;
+import javax.xml.stream.events.StartDocument;
+import javax.xml.stream.events.StartElement;
+import javax.xml.stream.events.XMLEvent;
 import iterators.GroceryStorePriceScraper;
+
+
 
 public class LoblawsIterator implements GroceryStorePriceScraper {
 	private int counter;
@@ -38,6 +52,11 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 	private Properties configurations;
 	private WebDriver driver;
 	private HashMap<String, Boolean> cities;
+	private FileOutputStream xml_ostream;
+	private FileInputStream xml_istream;
+	private XMLEventWriter xml_event_writer;
+	private XMLEventFactory xml_event_factory;
+	private XMLEvent xml_endline;
 
 
 	public LoblawsIterator(String config_file_path, int count, int limit) {
@@ -58,6 +77,154 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 
 
 	/**
+	 * openProductXmlStream: a private helper method that gets the xml filename with product data from
+	 * the configuration properties file and then creates input and output streams to this file
+	 * - then an xstream is created to write xml data or read xml data from this file
+	 * @return - returns nothing (void)
+	 * */
+	private void openProductXmlStream() {
+		String xml_filename = this.configurations.getProperty("data_xml_filename");
+		String root_tag = this.configurations.getProperty("root_xml_tag");
+		String currentPath = System.getProperty("user.dir");
+		Path pwd = Paths.get(currentPath);
+		pwd = pwd.resolve("config");
+		Path xml_path = pwd.resolve(xml_filename);
+		XMLOutputFactory xmlOutputFactory = XMLOutputFactory.newInstance();
+		try {
+			File xml_file = new File(xml_path.toString());
+			xml_file.createNewFile();
+			this.xml_ostream = new FileOutputStream(xml_file, true);
+			this.xml_istream = new FileInputStream(xml_file);
+			this.xml_event_writer = xmlOutputFactory.createXMLEventWriter(this.xml_ostream, "UTF-8");
+			this.xml_event_factory = XMLEventFactory.newInstance();
+			this.xml_endline = this.xml_event_factory.createDTD("\n");
+			StartDocument start_document = this.xml_event_factory.createStartDocument();
+			this.xml_event_writer.add(start_document);
+			this.xml_event_writer.add(this.xml_endline);
+			StartElement root_element = this.xml_event_factory.createStartElement("", "", root_tag);
+			this.xml_event_writer.add(root_element);
+			this.xml_event_writer.add(this.xml_endline);
+		} catch (Throwable t) {
+			t.printStackTrace();
+		}
+	}
+
+
+	/**
+	 * closeProductXmlStream: the private helper method that adds the closing root element, and closes
+	 * the xml document (code taken from the following link:
+	 * https://www.geeksforgeeks.org/xml-eventwriter-in-java-stax/)
+	 * @return - returns nothing (void)
+	 * */
+	private void closeProductXmlStream() throws XMLStreamException {
+		String root_tag = this.configurations.getProperty("root_xml_tag");
+		this.xml_event_writer.add(this.xml_event_factory.createEndElement("", "", root_tag));
+		this.xml_event_writer.add(this.xml_endline);
+		this.xml_event_writer.add(this.xml_event_factory.createEndDocument());
+		this.xml_event_writer.close();
+	}
+
+
+	/**
+	 * add_tabs: a private helper method to add tabs to the xml file where information is being stored
+	 * (code inspired from the following link: https://www.geeksforgeeks.org/xml-eventwriter-in-java-stax/)
+	 * @param xml_event_writer - an XMLEventWriter instance
+	 * @param tabs - the number of tabs to add, typically for indentation purposes 
+	 * (must be greater than or equal to 0)
+	 * @return - returns nothing (void)
+	 * */
+	private void add_tabs(XMLEventWriter xml_event_writer, int tabs) throws XMLStreamException {
+		assert(tabs >= 0);
+		XMLEvent tab_element = this.xml_event_factory.createDTD("\t");
+		for (int i = 0; i < tabs; ++i) {
+			xml_event_writer.add(tab_element);
+		}
+	}
+
+
+	/**
+	 * createXMLNode: a private helper method to create an xml node (code taken from the following link:
+	 * https://www.geeksforgeeks.org/xml-eventwriter-in-java-stax/)
+	 * @param xml_event_writer - an XMLEventWriter instance
+	 * @param node_name - a String representing the node name
+	 * @param node_value - a String representing the node value
+	 * @return - returns nothing (void)
+	 */
+	private void createXMLNode(XMLEventWriter xml_event_writer, String node_name, String node_value) 
+		throws XMLStreamException {
+		assert ((node_name.trim().length()) > 0);
+		XMLEvent tab_element = this.xml_event_factory.createDTD("\t");
+		StartElement start_tag = this.xml_event_factory.createStartElement("", "", node_name);
+		this.add_tabs(xml_event_writer, 1);
+		xml_event_writer.add(start_tag);
+		Characters content = this.xml_event_factory.createCharacters(node_value);
+		xml_event_writer.add(content);
+		EndElement end_tag = this.xml_event_factory.createEndElement("", "", node_name);
+		xml_event_writer.add(end_tag);
+		xml_event_writer.add(this.xml_endline);
+	}
+
+
+	/**
+	 * createXMLNode: a private helper method to create an xml node (code taken from the following link:
+	 * https://www.geeksforgeeks.org/xml-eventwriter-in-java-stax/)
+	 * @param xml_event_writer - an XMLEventWriter instance
+	 * @param node_name - a String representing the node name (must be non-empty excluding whitespaces)
+	 * @param node_value - a String representing the node value
+	 * @param tabs - an integer represnting the number of tabs to indent the tag (must be larger than 0)
+	 * @return - returns nothing (void)
+	 */
+	private void createXMLNode(XMLEventWriter xml_event_writer, String node_name, String node_value, int tabs)
+		throws XMLStreamException {
+		assert ((node_name.trim().length()) > 0);
+		assert (tabs >= 0);
+		StartElement start_tag = this.xml_event_factory.createStartElement("", "", node_name);
+		this.add_tabs(xml_event_writer, tabs);
+		xml_event_writer.add(start_tag);
+		Characters content = this.xml_event_factory.createCharacters(node_value);
+		xml_event_writer.add(content);
+		EndElement end_tag = this.xml_event_factory.createEndElement("", "", node_name);
+		xml_event_writer.add(end_tag);
+		xml_event_writer.add(this.xml_endline);
+	}
+
+
+	/**
+	 * hashmapToXML: a private helper method to translate a HashMap to a set of XML tags representing
+	 * the mapping (code taken from the following link:
+	 * https://www.geeksforgeeks.org/xml-eventwriter-in-java-stax/)
+	 * - the generic tag for the mapping is gathered by the mapping_tag property value in the properties file
+	 * - afterwards, each key in the HashMap and its value becomes a tag enclosed within the larger tag
+	 *   representing the mapping
+	 * - Example: if mapping_tag=info_set, and mapping={"product_name": "marshmallows", "price": "$1.99"}
+	 *   then the xml is created as shown below
+	 *   <info_set>
+	 *   	<product_name>marshmallows</product_name>
+	 *   	<price>$1.99</price>
+	 *   </info_set>
+	 * @param mapping = an instance of the HashMap in question.
+	 * @param xml_event_writer - an XMLEventWriter instance
+	 * @return - returns nothing (void)
+	 * */
+	private void hashmapToXML(HashMap<String, String> mapping, XMLEventWriter xml_event_writer)
+		throws XMLStreamException {
+		String mapping_tag = this.configurations.getProperty("mapping_tag");
+		Set<String> keys = mapping.keySet();
+		StartElement start_tag = this.xml_event_factory.createStartElement("", "", mapping_tag);
+		EndElement end_tag = this.xml_event_factory.createEndElement("", "", mapping_tag);
+		this.add_tabs(xml_event_writer, 1);
+		xml_event_writer.add(start_tag);
+		xml_event_writer.add(this.xml_endline);
+		for (String key: keys) {
+			this.createXMLNode(xml_event_writer, key, mapping.get(key), 2);
+		}
+		this.add_tabs(xml_event_writer, 1);
+		xml_event_writer.add(end_tag);
+		xml_event_writer.add(this.xml_endline);
+	}
+
+
+	/**
 	 * pauseThenClick: a private helper method that moves the mouse over an element (passed in), pauses
 	 * for a duration of milliseconds (passed in parameter), and then clicks the element
 	 * - it first scrolls the element into view using the org.openqa.selenium.JavascriptExecutor class
@@ -71,10 +238,18 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 	private void pauseThenClick(WebElement element, int pause_timeout) {
 		JavascriptExecutor js = (JavascriptExecutor) this.driver;
 		js.executeScript("arguments[0].scrollIntoView(false);", element);
-		new Actions(this.driver)
-			.moveToElement(element)
-			.pause(Duration.ofMillis(pause_timeout))
-			.click().perform();
+		try{
+			new Actions(this.driver)
+				.moveToElement(element)
+				.pause(Duration.ofMillis(pause_timeout))
+				.click().perform();
+		} catch (org.openqa.selenium.interactions.MoveTargetOutOfBoundsException e) {
+			js.executeScript("arguments[0].scrollIntoView(true);", element);
+			new Actions(this.driver)
+				.moveToElement(element)
+				.pause(Duration.ofMillis(pause_timeout))
+				.click().perform();
+		}
 	}
 
 
@@ -484,9 +659,9 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		WebElement price_value = this.fluentWait(price_value_locator, this.driver, 30, 100L);
 		WebElement price_unit = this.fluentWait(price_unit_locator, this.driver, 30, 100L);
 		String price_info = price_value.getText() + " " + price_unit.getText();
-		product_info.put("product name", product_name.getText());
-		product_info.put("price info", price_info);
-		product_info.put("Township location", township);
+		product_info.put("product_name", product_name.getText());
+		product_info.put("price_info", price_info);
+		product_info.put("township_location", township);
 		boolean brand_name_exists = this.elementExists(brand_name_locator, this.driver, 1, 100L);
 		boolean package_size_exists = this.elementExists(package_size_locator, this.driver, 1, 100L);
 		boolean comparison_price_value_exists = this.elementExists(
@@ -497,11 +672,11 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		);
 		if (brand_name_exists) {
 			WebElement brand_name = this.driver.findElement(brand_name_locator);
-			product_info.put("brand name", brand_name.getText());
+			product_info.put("brand_name", brand_name.getText());
 		}
 		if (package_size_exists) {
 			WebElement package_size_info = this.driver.findElement(package_size_locator);
-			product_info.put("package size", package_size_info.getText());
+			product_info.put("package_size", package_size_info.getText());
 		}
 		if (comparison_price_value_exists && comparison_price_unit_exists) {
 			WebElement comparison_price_value = this.fluentWait(
@@ -511,15 +686,14 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 				comparison_price_unit_locator, this.driver, 5, 100L
 			);
 			String comparison_unit_price = comparison_price_value.getText() + " " + comparison_price_unit.getText();
-			product_info.put("unit price for comparison", comparison_unit_price);
+			product_info.put("unit_price_for_comparison", comparison_unit_price);
 		}
 		driver.close();
 		driver.switchTo().window(original_window);
 		return product_info;
 	}
 
-	private void scrapeAllPrices(String city) {
-		List<HashMap<String, String>> prices = new ArrayList<HashMap<String, String>>();
+	private void scrapeAllPrices(String city) throws XMLStreamException {
 		StringBuilder product_info_link_selector = new StringBuilder(
 			this.configurations.getProperty("product_separate_page_link_selector")
 		);
@@ -566,7 +740,7 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 				);
 				js.executeScript("arguments[0].scrollIntoView(true);", product_parent_container);
 				price_data = this.scrapeProductInfo(city, product_info_link_selector);
-				prices.add(price_data);
+				this.hashmapToXML(price_data, this.xml_event_writer);
 				product_parent_container_selector = this.incrementSelectorDigit(
 					product_parent_container_selector
 				);
@@ -587,7 +761,6 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 			next_button_interactable = !(Boolean.parseBoolean(next_button_disabled));
 			at_bottom = true;
 		}
-		System.out.println(prices);
 	}
 
 	private void changeLocation(String township) {
@@ -637,7 +810,7 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		}
 	}
 
-	public void gatherPricesForTownship(String township) throws InterruptedException {
+	public void gatherPricesForTownship(String township) throws InterruptedException, XMLStreamException {
 		int index_after_brackets;
 		boolean item_to_be_ignored;
 		boolean menu_item_to_select;
@@ -764,7 +937,7 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		this.driver.get(this.configurations.getProperty("url"));
 	}
 
-	public String getUrl() throws InterruptedException {
+	public String getUrl() throws InterruptedException, XMLStreamException {
 		FirefoxOptions options = new FirefoxOptions();
 		// https://stackoverflow.com/questions/13959704/accepting-sharing-location-browser-popups-through-selenium-webdriver
 		options.addPreference("geo.prompt.testing", true);
@@ -772,6 +945,7 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		//options.addPreference(
 		//	"geo.wifi.uri", "https://location.services.mozilla.com/v1/geolocate?key=%MOZILLA_API_KEY%"
 		//);
+		this.openProductXmlStream();
 		this.driver = new FirefoxDriver(options);
 		this.driver.get(this.configurations.getProperty("url"));
 		this.getAllCities();
@@ -779,6 +953,7 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		for (String city: unique_cities) {
 			this.gatherPricesForTownship(city);
 		}
+		this.closeProductXmlStream();
 		this.driver.quit();
 		return this.configurations.getProperty("url");
 	}

@@ -2,6 +2,15 @@ package iterators;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import javax.xml.stream.XMLEventFactory;
+import javax.xml.stream.XMLEventWriter;
+import javax.xml.stream.XMLOutputFactory;
+import javax.xml.stream.XMLStreamException;
+import javax.xml.stream.events.Characters;
+import javax.xml.stream.events.EndElement;
+import javax.xml.stream.events.StartDocument;
+import javax.xml.stream.events.StartElement;
+import javax.xml.stream.events.XMLEvent;
 import iterators.GroceryStorePriceScraper;
 import iterators.loblaws.LoblawsIterator;
 
@@ -11,7 +20,7 @@ import iterators.loblaws.LoblawsIterator;
  */
 public class App
 {
-    public static void main( String[] args ) throws InterruptedException
+    public static void main( String[] args ) throws InterruptedException, XMLStreamException
     {
         //System.out.println( "Hello World!" );
 	String currentPath = System.getProperty("user.dir");
