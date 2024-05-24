@@ -33,13 +33,12 @@ import org.openqa.selenium.support.ui.FluentWait;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import javax.xml.stream.XMLEventFactory;
 import javax.xml.stream.XMLEventWriter;
+import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLOutputFactory;
+import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamException;
-import javax.xml.stream.events.Characters;
-import javax.xml.stream.events.EndElement;
-import javax.xml.stream.events.StartDocument;
-import javax.xml.stream.events.StartElement;
-import javax.xml.stream.events.XMLEvent;
+import javax.xml.stream.XMLStreamConstants;
+import javax.xml.stream.events.*;
 import iterators.GroceryStorePriceScraper;
 
 
@@ -47,6 +46,7 @@ import iterators.GroceryStorePriceScraper;
 public class LoblawsIterator implements GroceryStorePriceScraper {
 	private int counter;
 	private int limit;
+	private boolean event_reader_opened;
 	private String fpath;
 	private HashMap<String, String> numbers;
 	private Properties configurations;
@@ -55,6 +55,7 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 	private FileOutputStream xml_ostream;
 	private FileInputStream xml_istream;
 	private XMLEventWriter xml_event_writer;
+	private XMLEventReader xml_event_reader;
 	private XMLEventFactory xml_event_factory;
 	private XMLEvent xml_endline;
 
@@ -73,6 +74,7 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 			t.printStackTrace();
 		}
 		this.driver = null;
+		this.event_reader_opened = false;
 	}
 
 
@@ -113,17 +115,38 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 
 
 	/**
-	 * closeProductXmlStream: the private helper method that adds the closing root element, and closes
-	 * the xml document (code taken from the following link:
+	 * closeProductXmlOutputStream: the private helper method that adds the closing root element, and
+	 * closes the xml document (code taken from the following link:
 	 * https://www.geeksforgeeks.org/xml-eventwriter-in-java-stax/)
 	 * @return - returns nothing (void)
 	 * */
-	private void closeProductXmlStream() throws XMLStreamException {
+	private void closeProductXmlOutputStream() throws XMLStreamException {
 		String root_tag = this.configurations.getProperty("root_xml_tag");
 		this.xml_event_writer.add(this.xml_event_factory.createEndElement("", "", root_tag));
 		this.xml_event_writer.add(this.xml_endline);
 		this.xml_event_writer.add(this.xml_event_factory.createEndDocument());
 		this.xml_event_writer.close();
+	}
+
+
+	private void openProductXmlInputStream() {
+		boolean file_already_exists;
+		String xml_filename = this.configurations.getProperty("data_xml_filename");
+		String root_tag = this.configurations.getProperty("root_xml_tag");
+		String currentPath = System.getProperty("user.dir");
+		Path pwd = Paths.get(currentPath);
+		Path xml_path = pwd.resolve(xml_filename);
+		XMLInputFactory xml_input_factory = XMLInputFactory.newInstance();
+		try {
+			File xml_file = new File(xml_path.toString());
+			file_already_exists = !(xml_file.createNewFile());
+			this.xml_istream = new FileInputStream(xml_file);
+			this.xml_event_reader = xml_input_factory.createXMLEventReader(this.xml_istream);
+			this.xml_event_factory = XMLEventFactory.newInstance();
+		} catch (Throwable t) {
+			t.printStackTrace();
+		}
+		this.event_reader_opened = true;
 	}
 
 
@@ -947,7 +970,7 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		//options.addPreference(
 		//	"geo.wifi.uri", "https://location.services.mozilla.com/v1/geolocate?key=%MOZILLA_API_KEY%"
 		//);
-		this.openProductXmlStream();
+		this.openProductXmlOutputStream();
 		this.driver = new FirefoxDriver(options);
 		this.driver.get(this.configurations.getProperty("url"));
 		this.getAllCities();
@@ -955,22 +978,78 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		for (String city: unique_cities) {
 			this.gatherPricesForTownship(city);
 		}
-		this.closeProductXmlStream();
+		this.closeProductXmlOutputStream();
 		this.driver.quit();
 	}
 
 
-	public HashMap<String, String> next() {
-		numbers.put(
-			Integer.toString(this.counter),
-			"Current counter is " + this.counter + ", limit is " + Integer.toString(this.limit)
-		);
-		this.counter++;
-		return numbers;
+	public boolean hasNext() throws XMLStreamException {
+		String mapping_tag_name = this.configurations.getProperty("mapping_tag");
+		String name;
+		if (!this.event_reader_opened) {
+			this.openProductXmlInputStream();
+		}
+		while (this.xml_event_reader.hasNext()) {
+			XMLEvent next_event = this.xml_event_reader.nextEvent();
+			if (next_event.isStartElement()) {
+				StartElement start_element = next_event.asStartElement();
+				name = start_element.getName().getLocalPart();
+				if (name.equals(mapping_tag_name)) {
+					return true;
+				}
+			}
+		}
+		return false;
 	}
 
 
-	public boolean hasNext() {
-		return (this.counter <= this.limit);
+	public HashMap<String, String> next() throws XMLStreamException {
+		boolean whitespace_data;
+		String mapping_tag_name = this.configurations.getProperty("mapping_tag");
+		String root_tag_name = this.configurations.getProperty("root_xml_tag");
+		String name;
+		Characters value;
+		HashMap<String, String> product_details = new HashMap<>();
+		if (!this.event_reader_opened) {
+			this.openProductXmlInputStream();
+		}
+		do {
+			XMLEvent next_event = this.xml_event_reader.nextEvent();
+			if (next_event.isStartElement()) {
+				StartElement start_element = next_event.asStartElement();
+				name = start_element.getName().getLocalPart();
+				if (name.equals(mapping_tag_name)) {
+					continue;
+				} else if (name.equals(root_tag_name)) {
+					continue;
+				} else {
+					next_event = this.xml_event_reader.nextEvent();
+					while (
+						(!(next_event.isCharacters())) &&
+						(this.xml_event_reader.hasNext())
+					) {
+						next_event = this.xml_event_reader.nextEvent();
+					}
+					if (!(this.xml_event_reader.hasNext())) {
+						return product_details;
+					}
+					value = next_event.asCharacters();
+					whitespace_data = (
+						value.isIgnorableWhiteSpace() || value.isWhiteSpace()
+					);
+					if (!whitespace_data) {
+						product_details.put(name, value.getData());
+					}
+				}
+			} else if (next_event.isEndElement()) {
+				EndElement end_element = next_event.asEndElement();
+				name = end_element.getName().getLocalPart();
+				if (name.equals(mapping_tag_name)) {
+					return product_details;
+				}
+			}
+		} while (this.xml_event_reader.hasNext());
+		return product_details;
 	}
+
 }

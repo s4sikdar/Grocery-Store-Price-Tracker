@@ -32,9 +32,9 @@ public class App
 	pwd = pwd.resolve("loblaws.properties");
 	//String config_path = pwd.toString() + "loblaws.properties";
 	LoblawsIterator loblaws_iter = new LoblawsIterator(pwd.toString(), 0, 10);
-	//while (loblaws_iter.hasNext()) {
-	//	System.out.println(loblaws_iter.next());
-	//}
 	loblaws_iter.loadXML();
+	while (loblaws_iter.hasNext()) {
+		System.out.println(loblaws_iter.next());
+	}
     }
 }
