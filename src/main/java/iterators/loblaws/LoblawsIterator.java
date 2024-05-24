@@ -77,12 +77,12 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 
 
 	/**
-	 * openProductXmlStream: a private helper method that gets the xml filename with product data from
-	 * the configuration properties file and then creates input and output streams to this file
-	 * - then an xstream is created to write xml data or read xml data from this file
+	 * openProductXmlOutputStream: a private helper method that gets the xml filename with product data from
+	 * the configuration properties file and then creates an output stream to this file using the STAX API
+	 * via the XMLEventWriter API
 	 * @return - returns nothing (void)
 	 * */
-	private void openProductXmlStream() {
+	private void openProductXmlOutputStream() {
 		boolean file_already_exists;
 		String xml_filename = this.configurations.getProperty("data_xml_filename");
 		String root_tag = this.configurations.getProperty("root_xml_tag");
@@ -94,7 +94,7 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 			File xml_file = new File(xml_path.toString());
 			file_already_exists = !(xml_file.createNewFile());
 			this.xml_ostream = new FileOutputStream(xml_file, true);
-			this.xml_istream = new FileInputStream(xml_file);
+			//this.xml_istream = new FileInputStream(xml_file);
 			this.xml_event_writer = xmlOutputFactory.createXMLEventWriter(this.xml_ostream, "UTF-8");
 			this.xml_event_factory = XMLEventFactory.newInstance();
 			this.xml_endline = this.xml_event_factory.createDTD("\n");
@@ -939,7 +939,7 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		this.driver.get(this.configurations.getProperty("url"));
 	}
 
-	public String getUrl() throws InterruptedException, XMLStreamException {
+	public void loadXML() throws InterruptedException, XMLStreamException {
 		FirefoxOptions options = new FirefoxOptions();
 		// https://stackoverflow.com/questions/13959704/accepting-sharing-location-browser-popups-through-selenium-webdriver
 		options.addPreference("geo.prompt.testing", true);
@@ -957,7 +957,6 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		}
 		this.closeProductXmlStream();
 		this.driver.quit();
-		return this.configurations.getProperty("url");
 	}
 
 

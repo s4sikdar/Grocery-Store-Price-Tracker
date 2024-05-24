@@ -35,6 +35,6 @@ public class App
 	//while (loblaws_iter.hasNext()) {
 	//	System.out.println(loblaws_iter.next());
 	//}
-	System.out.println(loblaws_iter.getUrl());
+	loblaws_iter.loadXML();
     }
 }
