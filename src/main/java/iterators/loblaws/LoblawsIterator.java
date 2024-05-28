@@ -571,7 +571,6 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		boolean next_button_interactable = true;
 		boolean at_bottom = false;
 		boolean pagination_exists;
-		int counter = 0;
 		String next_button_disabled;
 		JavascriptExecutor js = (JavascriptExecutor) this.driver;
 		WebElement product_parent_container;
@@ -607,24 +606,18 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 				product_parent_container_locator = new By.ByCssSelector(
 					product_parent_container_selector.toString()
 				);
-				counter++;
-				if (counter > 0) {
-					counter = 0;
-					break;
-				}
 			}
-			//pagination_exists = this.elementExists(pagination_locator, this.driver, 5, 250L);
-			//if (!pagination_exists) {
-			//	next_button_interactable = false;
-			//	continue;
-			//}
-			//WebElement next_items_button = this.fluentWait(
-			//	next_button_locator, this.driver, 5, 250L
-			//);
-			//next_button_disabled = next_items_button.getAttribute("disabled");
-			//next_button_interactable = !(Boolean.parseBoolean(next_button_disabled));
-			//at_bottom = true;
-			next_button_interactable = false;
+			pagination_exists = this.elementExists(pagination_locator, this.driver, 5, 250L);
+			if (!pagination_exists) {
+				next_button_interactable = false;
+				continue;
+			}
+			WebElement next_items_button = this.fluentWait(
+				next_button_locator, this.driver, 5, 250L
+			);
+			next_button_disabled = next_items_button.getAttribute("disabled");
+			next_button_interactable = !(Boolean.parseBoolean(next_button_disabled));
+			at_bottom = true;
 		}
 	}
 
@@ -804,7 +797,6 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 
 	public void loadXML() throws InterruptedException, XMLStreamException {
 		FirefoxOptions options = new FirefoxOptions();
-		int counter = 0;
 		// https://stackoverflow.com/questions/13959704/accepting-sharing-location-browser-popups-through-selenium-webdriver
 		options.addPreference("geo.prompt.testing", true);
 		options.addPreference("geo.prompt.testing.allow", true);
@@ -817,11 +809,6 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		Set<String> unique_cities = this.cities.keySet();
 		for (String city: unique_cities) {
 			this.gatherPricesForTownship(city);
-			counter++;
-			if (counter > 0) {
-				counter = 0;
-				break;
-			}
 		}
 		this.xml_parser.closeProductXmlOutputStream();
 		this.driver.quit();
