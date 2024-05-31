@@ -297,6 +297,15 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 	}
 
 
+	/**
+	 * getAllCities - a private helper method that searches for all cities in Canada where there is at
+	 * least one store
+	 * - when you try to change your store location on websites of grocery chains owned by Loblaws, there is
+	 *   a search bar on a new page with a list of all store locations across Canada
+	 * - This method will scrape the list of all store locations to get all unique cities listed within this
+	 *   list of stores, and each entry will be added in this.cities
+	 *  @return - returns nothing (void)
+	 * */
 	private void getAllCities() throws InterruptedException {
 		String location_button_selector = this.configurations.getProperty("location_button");
 		String change_location_selector = this.configurations.getProperty("change_location_button");
@@ -367,6 +376,16 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 	}
 
 
+	/**
+	 * menuItemToBeIgnored - a private helper method to check if the text of the passed in WebElement is the
+	 * text of a main menu item that should be ignored, or if the menu item should be clicked on
+	 * - the passed in WebElement represents a clickable button or anchor tag that represents a main menu item
+	 *   to further expand
+	 * - the passed in WebElement should have text inside it
+	 * @param element - a WebElement instance representing a main menu item to further expand. The WebElement
+	 * should represent a clickable button or anchor tag that has text inside it.
+	 * @return - returns true if the menu item should be ignored, returns false otherwise
+	 * */
 	private boolean menuItemToBeIgnored(WebElement element) {
 		String element_text = element.getText();
 		boolean string_is_contained;
@@ -381,6 +400,20 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		return false;
 	}
 
+
+	/**
+	 * submenuItemToBeIgnored - a private helper method that determines if the current submenu item is to be
+	 * ignored, based on its text and whether the text falls under a submenu item that is to be ignored
+	 * - It uses a number in the css selector passed in to determine if this is the first submenu of items
+	 *   (under groceries) or the second submenu of items (under home beauty items)
+	 * - Based on this, the text is compared with the right list of phrases, to determine if this is a submenu
+	 *   item that should be ignored
+	 * - The list of phrases are comma-separated-values from the properties files
+	 * @param element - a WebElement instance that has the text you wish to search
+	 * @param css_selector - a String that represents the css selector of the submenu item inside the
+	 * main menu
+	 * @return - returns true if the submenu item should be ignored, returns false otherwise
+	 */
 	private boolean submenuItemToBeIgnored(WebElement element, String css_selector) {
 		String element_text = element.getText();
 		String grocery_submenu_items_to_ignore = this.configurations.getProperty("grocery_sub_menu_items_to_ignore");
@@ -418,16 +451,44 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		return false;
 	}
 
+
+	/**
+	 * getNumFromConfigurationsFile - a private helper method that gets a value from the properties file
+	 * based on the configuration variable to look for (specified by config_var_name)
+	 * - It then tries to cast the string value into an integer, and then returns it
+	 * - The value read in from the configuration file must be a string that represents a number (example:
+	 *   "123" or "1") or this function will throw an error when trying to parse the integer
+	 * @param config_var_name = a constant String representing the name of the variable in the properties file
+	 * to look for (the variable must be in the configuration file, or this method will likely throw an error)
+	 * @return - returns the parsed integer read in from the configuration file
+	 */
 	private int getNumFromConfigurationsFile(final String config_var_name) {
 		String value = this.configurations.getProperty(config_var_name);
 		return Integer.parseInt(value);
 	}
 
+
+	/**
+	 * incrementSelectorDigit - a private helper method that gets a number from inside of selector (starting
+	 * from index starting_index) and then returns a copy of selector with the number incremented
+	 * @param selector - a constant StringBuilder representing a css selector that has a number in it 
+	 * in between round brackets (this number must be at an index that is greater than or equal to
+	 * starting_index plus one, and the StringBuilder must have a length of at least 3)
+	 * @param starting_index - an integer representing the starting index from where to look for the number
+	 * (starting_index must be greater than or equal to 0, and less than the length of the string derived
+	 * from selector)
+	 * @return - returns a new StringBuilder instance with the integer incremented if the integer and the
+	 * surrounding round brackets can be found, returns a copy of the passed in StringBuilder from selector
+	 * otherwise
+	 */
 	private StringBuilder incrementSelectorDigit(final StringBuilder selector, int starting_index) {
 		assert (selector.toString().length() >= 3);
 		assert ((0 <= starting_index) && (starting_index < (selector.toString().length())));
 		StringBuilder new_selector = new StringBuilder(selector.toString());
 		int opening_brace_index = new_selector.indexOf("(", starting_index);
+		if (opening_brace_index == -1) {
+			return new_selector;
+		}
 		int closing_brace_index = new_selector.indexOf(")", opening_brace_index);
 		String number_between_brackets = new_selector.substring(
 			(opening_brace_index + 1), closing_brace_index
@@ -440,10 +501,23 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		return new_selector;
 	}
 
+
+	/**
+	 * incrementSelectorDigit - a private helper method that gets a number from inside of selector and
+	 * then returns a copy of selector with the number incremented (the number is inside round brackets)
+	 * @param selector - a constant StringBuilder representing a css selector that has a number in it 
+	 * in between round brackets
+	 * @return - returns a new StringBuilder instance with the integer incremented if the integer and the
+	 * surrounding round brackets can be found, returns a copy of the passed in StringBuilder from selector
+	 * otherwise
+	 */
 	private StringBuilder incrementSelectorDigit(final StringBuilder selector) {
 		assert (selector.toString().length() >= 3);
 		StringBuilder new_selector = new StringBuilder(selector.toString());
 		int opening_brace_index = new_selector.indexOf("(");
+		if (opening_brace_index == -1) {
+			return new_selector;
+		}
 		int closing_brace_index = new_selector.indexOf(")", opening_brace_index);
 		String number_between_brackets = new_selector.substring(
 			(opening_brace_index + 1), closing_brace_index
@@ -456,10 +530,23 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		return new_selector;
 	}
 
+
+	/**
+	 * changeSelectorDigit - a private helper method that gets a number from inside of selector and
+	 * then returns a copy of selector with the number replaced by digit
+	 * @param selector - a constant StringBuilder representing a css selector that has a number in it 
+	 * in between round brackets
+	 * @return - returns a new StringBuilder instance with the integer incremented if the integer and the
+	 * surrounding round brackets can be found, returns a copy of the passed in StringBuilder from selector
+	 * otherwise
+	 */
 	private StringBuilder changeSelectorDigit(final StringBuilder selector, int digit) {
 		assert (selector.toString().length() >= 3);
 		StringBuilder new_selector = new StringBuilder(selector.toString());
 		int opening_brace_index = new_selector.indexOf("(");
+		if (opening_brace_index == -1) {
+			return new_selector;
+		}
 		int closing_brace_index = new_selector.indexOf(")", opening_brace_index);
 		String number_between_brackets = new_selector.substring(
 			(opening_brace_index + 1), closing_brace_index
@@ -470,11 +557,29 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		return new_selector;
 	}
 
+
+	/**
+	 * changeSelectorDigit - a private helper method that gets a number from inside of selector and
+	 * then returns a copy of selector with the number replaced by digit
+	 * - the index of the number has to be at least starting_index plus one
+	 * @param selector - a constant StringBuilder representing a css selector that has a number in it 
+	 * in between round brackets (the resulting string of the selector must have a length of at least 3)
+	 * @param starting_index - an integer representing the index of where to start looking for the opening
+	 * round bracket for which the number is stored inside (i.e. where to start looking for "(" in "(3)")
+	 * - starting_index has to be at least 0 and less than the length of the resulting string produced
+	 *   from selector
+	 * @return - returns a new StringBuilder instance with the integer incremented if the integer and the
+	 * surrounding round brackets can be found, returns a copy of the passed in StringBuilder from selector
+	 * otherwise
+	 */
 	private StringBuilder changeSelectorDigit(final StringBuilder selector, int digit, int starting_index) {
 		assert (selector.toString().length() >= 3);
 		assert ((0 <= starting_index) && (starting_index < (selector.toString().length())));
 		StringBuilder new_selector = new StringBuilder(selector.toString());
 		int opening_brace_index = new_selector.indexOf("(", starting_index);
+		if (opening_brace_index == -1) {
+			return new_selector;
+		}
 		int closing_brace_index = new_selector.indexOf(")", opening_brace_index);
 		String number_between_brackets = new_selector.substring(
 			(opening_brace_index + 1), closing_brace_index
@@ -485,6 +590,22 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		return new_selector;
 	}
 
+
+	/**
+	 * scrapeProductInfo - a private helper method that scrapes all of the information available on the
+	 * product and returns a HashMap<String, String> instance with all available product information
+	 * - This method will open the link in a new tab, and bring that tab into focus, the link being to
+	 *   the information page for that product (its CSS selector being the resulting string of
+	 *   product_info_link_selector)
+	 * - After gathering all product information, the driver closes the tab and switches back to the original
+	 *   tab.
+	 * @param township - a string representing the town and province where the product information is being
+	 * gathered (i.e. the store location was set to be a store in the town and province given in township, such
+	 * as "Toronto, Ontario")
+	 * @param product_info_link_selector - a StringBuilder instance that represents the CSS selector for the
+	 * link to the product information page (the CSS selector for the specific <a> tag in question)
+	 * @return - returns a HashMap<String, String> instance
+	 */
 	private HashMap<String, String> scrapeProductInfo(String township, StringBuilder product_info_link_selector) {
 		HashMap<String, String> product_info = new HashMap<>();
 		String brand_name_selector = this.configurations.getProperty("brand_name_selector");
@@ -551,6 +672,19 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		return product_info;
 	}
 
+
+	/**
+	 * scrapeAllPrices - a private method that goes through all the listed products in a subcategory and then
+	 * gathers a HashMap of information on each product
+	 * - the HashMap of information is added to the XML as an XML tag with the keys as subtags (their values
+	 *   being the values in the subtags)
+	 * - If there are multiple pages of products in a subcategory, then the method will scrape information for
+	 *   all products
+	 * @param city - a String representing the city and province combination where the product information
+	 * is being scraped (i.e. prices are different in stores in different cities within Canada, and the city
+	 * represents the city and province combination where you selected a store location)
+	 * @return - returns nothing (void)
+	 */
 	private void scrapeAllPrices(String city) throws XMLStreamException {
 		StringBuilder product_info_link_selector = new StringBuilder(
 			this.configurations.getProperty("product_separate_page_link_selector")
@@ -621,6 +755,19 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		}
 	}
 
+
+	/**
+	 * changeLocation - a private helper method that is responsible for changing the location of the grocery
+	 * store
+	 * - Selects the button to change the location, and then enters the String township in the search bar
+	 * - Once all available locations in that township are shown, select the first available one
+	 * - Once the location is selected, a modal shows and a dialog shows, which confirms that the location
+	 *   has been changed
+	 * - Once the dialog shows, click the button to close the dialog
+	 * @param township - a String representing the city and province combination that the store's location
+	 * is being changed to
+	 * @return - returns nothing (void)
+	 */
 	private void changeLocation(String township) {
 		String location_button_selector = this.configurations.getProperty("location_button");
 		String change_location_button_text = this.configurations.getProperty("change_location_button_text");
@@ -668,7 +815,19 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		}
 	}
 
-	public void gatherPricesForTownship(String township) throws InterruptedException, XMLStreamException {
+
+	/**
+	 * gatherPricesForTownship - a private helper method that will change the store location to one being in
+	 * a given township, and then for that store it will go over all categories of products, and all products
+	 * in all subcategories of those categories
+	 * - essentially scrapes all product information (product label, price, unit price, etc.) for a store in
+	 *   a given township, and adds the results to an xml file (specified by the configuration file who's name
+	 *   is passed into the constructor)
+	 * @param township - a String representing the city and province combination that the store's location
+	 * is being changed to
+	 * @return - returns nothing (void)
+	 */
+	private void gatherPricesForTownship(String township) throws InterruptedException, XMLStreamException {
 		int index_after_brackets;
 		boolean item_to_be_ignored;
 		boolean menu_item_to_select;
@@ -795,6 +954,16 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		this.driver.get(this.configurations.getProperty("url"));
 	}
 
+
+	/**
+	 * loadXML - a public method that gets all possible cities where there is a store location, and for each
+	 * city, selects a store in that city and scrapes price information for all products in that store
+	 * - for each set of product information that has been scraped, an entry is added to the XML file who's name
+	 *   is passed into the iterator's constructor
+	 * - this method essentialy adds entries to the XML file to be iterated over using the methods next() and
+	 *   hasNext()
+	 * @return - returns nothing (void)
+	 */
 	public void loadXML() throws InterruptedException, XMLStreamException {
 		FirefoxOptions options = new FirefoxOptions();
 		// https://stackoverflow.com/questions/13959704/accepting-sharing-location-browser-popups-through-selenium-webdriver
@@ -815,13 +984,25 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 	}
 
 
+	/**
+	 * hasNext - a public method that checks if there are any more entries in the XML file to be iterated over
+	 * (entries being any information sets of product data left to iterate over)
+	 * @return - returns true if there are entries in the XML file left to iterate over, returns false otherwise
+	 */
 	public boolean hasNext() throws XMLStreamException {
 		return this.xml_parser.hasNext();
 	}
 
 
+	/**
+	 * next - a public method that parses the next information set of product data in the XML file, and returns
+	 * it has a HashMap<String, String> instance
+	 * @return - returns a HashMap<String, String> instance representing the current information set of product
+	 * data in the XML file that has been iterated over
+	 */
 	public HashMap<String, String> next() throws XMLStreamException {
 		return this.xml_parser.next();
 	}
+
 
 }

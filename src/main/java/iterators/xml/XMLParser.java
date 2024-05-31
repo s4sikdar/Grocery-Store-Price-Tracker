@@ -92,6 +92,13 @@ public class XMLParser {
 	}
 
 
+	/**
+	 * openProductXmlInputStream - a private helper method that uses the STAX API (via XMLEventReader) and
+	 * opens an input stream from the xml file specified by the name passed to the constructor
+	 * (this.xml_filename)
+	 * - this method must be run before reading in xml tags from the xml file
+	 * @return - returns nothing (void)
+	 */
 	private void openProductXmlInputStream() {
 		boolean file_already_exists;
 		String currentPath = System.getProperty("user.dir");
@@ -182,7 +189,7 @@ public class XMLParser {
 	 * - the generic tag for the mapping is gathered by the mapping_tag property value in the properties file
 	 * - afterwards, each key in the HashMap and its value becomes a tag enclosed within the larger tag
 	 *   representing the mapping
-	 * - Example: if mapping_tag=info_set, and mapping={"product_name": "marshmallows", "price": "$1.99"}
+	 * - Example: if this.mapping_tag=info_set, and mapping={"product_name": "marshmallows", "price": "$1.99"}
 	 *   then the xml is created as shown below
 	 *   <info_set>
 	 *   	<product_name>marshmallows</product_name>
@@ -209,6 +216,13 @@ public class XMLParser {
 	}
 
 
+	/**
+	 * hasNext - a public method to check whether or not there are any more tags to be parsed and returned
+	 * as a HashMap using the next() method
+	 * - the xml is parsed until an opening tag is reached with the tag name being the same as this.mapping_tag
+	 * @return - returns true if there are any more tags with the name of this.mapping_tag to be parsed,
+	 * returns false otherwise
+	 */
 	public boolean hasNext() throws XMLStreamException {
 		String name;
 		if (!this.event_reader_opened) {
@@ -228,6 +242,19 @@ public class XMLParser {
 	}
 
 
+	/**
+	 * next - a public method that parses the contents of the next xml tag with the name being this.mapping_tag
+	 * and returns the contents in a HashMap
+	 * - Each set of xml tags inside this.mapping_tag has the tag name as the key in the HashMap,
+	 *   and the value inside the tags as the value
+	 * - Example: if this.mapping_tag is "GroceryItem", and the xml tag is as below
+	 *   <GroceryItem>
+	 *   	<product>Apple</product>
+	 *   	<price>$0.99</price>
+	 *   </GroceryItem>
+	 *   then next() returns the mapping as {"product": "Apple", "price": "$0.99"}
+	 * @return - returns a HashMap with the information stored inside the XML Tag
+	 */
 	public HashMap<String, String> next() throws XMLStreamException {
 		boolean whitespace_data;
 		String name;
