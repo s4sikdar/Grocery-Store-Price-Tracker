@@ -3,13 +3,9 @@ import java.lang.*;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.InputStream;
-import java.io.File;
+import java.io.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.io.IOException;
 import java.time.Duration;
 import org.openqa.selenium.Alert;
 import org.openqa.selenium.WindowType;
@@ -31,42 +27,56 @@ import org.openqa.selenium.support.ui.Wait;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.openqa.selenium.support.ui.FluentWait;
 import org.openqa.selenium.support.ui.ExpectedConditions;
-import javax.xml.stream.XMLEventFactory;
-import javax.xml.stream.XMLEventWriter;
-import javax.xml.stream.XMLEventReader;
-import javax.xml.stream.XMLOutputFactory;
-import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamException;
-import javax.xml.stream.XMLStreamConstants;
-import javax.xml.stream.events.*;
 import iterators.GroceryStorePriceScraper;
 import iterators.xml.*;
 
 
 
 public class LoblawsIterator implements GroceryStorePriceScraper {
-	private int counter;
-	private int limit;
 	private boolean event_reader_opened;
 	private String fpath;
-	private HashMap<String, String> numbers;
 	private Properties configurations;
 	private WebDriver driver;
 	private HashMap<String, Boolean> cities;
-	private XMLEventWriter xml_event_writer;
-	private XMLEventReader xml_event_reader;
-	private XMLEventFactory xml_event_factory;
-	private XMLEvent xml_endline;
 	private XMLParser xml_parser;
+	private int hours;
+	private int minutes;
 
 
-	public LoblawsIterator(String config_file_path, int count, int limit) {
-		this.counter = count;
-		this.limit = limit;
-		this.numbers = new HashMap<>();
+	public LoblawsIterator(String config_file_path, int count) {
+		this.setUpConfigAndXML(config_file_path);
+		this.hours = 0;
+		this.minutes = 0;
+	}
+
+
+	public LoblawsIterator(String config_file_path, int count, int hours) {
+		this.setUpConfigAndXML(config_file_path);
+		this.hours = hours;
+		this.minutes = 0;
+	}
+
+
+	public LoblawsIterator(String config_file_path, int count, int hours, int minutes) {
+		this.setUpConfigAndXML(config_file_path);
+		this.hours = hours;
+		this.minutes = minutes;
+	}
+
+
+	/**
+	 * setUpConfigAndXML - a private helper method to set up access to the configuration file (a .properties
+	 * file), and load the XML parser as well (created to avoid code re-use in the constructors)
+	 * @param config_file_path - a String representing the File path to the .properties file
+	 * @return - returns nothing (void)
+	 */
+	private void setUpConfigAndXML(String config_file_path) {
 		this.cities = new HashMap<>();
 		this.fpath = config_file_path;
-		File filename = new File(config_file_path);
+		this.driver = null;
+		this.event_reader_opened = false;
+		File filename = new File(this.fpath);
                 this.configurations = new Properties();
 		try {
 			this.configurations.load(new FileInputStream(config_file_path));
@@ -77,8 +87,17 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		} catch (Throwable t) {
 			t.printStackTrace();
 		}
-		this.driver = null;
-		this.event_reader_opened = false;
+	}
+
+
+	/**
+	 * timeLimit - a private helper method to determine if there is a time limit (if this.hours is 0 and
+	 * this.minutes is 0)
+	 * @return - returns true if there is no time limit (if this.hours and this.minutes are both 0), returns
+	 * false otherwise
+	 */
+	private boolean timeLimit() {
+		return !((this.minutes == 0) && (this.hours == 0));
 	}
 
 
@@ -371,8 +390,6 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 				num_index, (num_index + num_length), Integer.toString(counter)
 			);
 		}
-
-
 	}
 
 
