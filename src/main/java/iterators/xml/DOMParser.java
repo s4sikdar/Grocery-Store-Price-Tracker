@@ -1,3 +1,4 @@
+package iterators.xml;
 import java.lang.*;
 import java.io.*;
 import java.nio.file.Path;
@@ -141,7 +142,7 @@ public class DOMParser {
 	public String next() {
 		this.parse();
 		String text = this.getText(this.current_node);
-		this.doc.removeChild(this.current_node);
+		this.root_node.removeChild(this.current_node);
 		NodeList mapping_tags = this.doc.getElementsByTagName(this.mapping_tag);
 		int length = mapping_tags.getLength();
 		if (length > 0) {
@@ -169,7 +170,7 @@ public class DOMParser {
 			TransformerFactory transform_factory = TransformerFactory.newInstance();
 			Transformer transformer = transform_factory.newTransformer();
 			// preserve indentation
-			transformer.setOutputProperty(OutputKeys.INDENT, "yes");
+			//transformer.setOutputProperty(OutputKeys.INDENT, "yes");
 			DOMSource modified_dom_source = new DOMSource(this.doc);
 			StreamResult output_result = new StreamResult(this.xml_file);
 			transformer.transform(modified_dom_source, output_result);

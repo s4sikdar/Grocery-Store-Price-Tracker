@@ -1,6 +1,8 @@
 package iterators.loblaws;
 import java.lang.*;
 import java.util.*;
+import java.time.*;
+import java.time.temporal.ChronoUnit;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.io.*;
@@ -42,23 +44,25 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 	private XMLParser xml_parser;
 	private int hours;
 	private int minutes;
+	private LocalTime ending_time;
+	private boolean timer_started;
 
 
-	public LoblawsIterator(String config_file_path, int count) {
+	public LoblawsIterator(String config_file_path) {
 		this.setUpConfigAndXML(config_file_path);
 		this.hours = 0;
 		this.minutes = 0;
 	}
 
 
-	public LoblawsIterator(String config_file_path, int count, int hours) {
+	public LoblawsIterator(String config_file_path, int hours) {
 		this.setUpConfigAndXML(config_file_path);
 		this.hours = hours;
 		this.minutes = 0;
 	}
 
 
-	public LoblawsIterator(String config_file_path, int count, int hours, int minutes) {
+	public LoblawsIterator(String config_file_path, int hours, int minutes) {
 		this.setUpConfigAndXML(config_file_path);
 		this.hours = hours;
 		this.minutes = minutes;
@@ -76,6 +80,7 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		this.fpath = config_file_path;
 		this.driver = null;
 		this.event_reader_opened = false;
+		this.timer_started = false;
 		File filename = new File(this.fpath);
                 this.configurations = new Properties();
 		try {
@@ -91,13 +96,38 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 
 
 	/**
-	 * timeLimit - a private helper method to determine if there is a time limit (if this.hours is 0 and
+	 * timeLimitExists - a private helper method to determine if there is a time limit (if this.hours is 0 and
 	 * this.minutes is 0)
 	 * @return - returns true if there is no time limit (if this.hours and this.minutes are both 0), returns
 	 * false otherwise
 	 */
-	private boolean timeLimit() {
+	private boolean timeLimitExists() {
 		return !((this.minutes == 0) && (this.hours == 0));
+	}
+
+
+	/**
+	 * startTime - a private helper method to start the timer if a time limit has been specified by
+	 * this.timeLimitExists() evaluating to true
+	 * @return - returns nothing (void)
+	 */
+	private void startTimer() {
+		if ((this.timeLimitExists()) && (!this.timer_started)) {
+			this.ending_time = LocalTime.now();
+			this.ending_time.plus(this.hours, ChronoUnit.HOURS);
+			this.ending_time.plus(this.minutes, ChronoUnit.MINUTES);
+			this.timer_started = true;
+		}
+	}
+
+
+	/**
+	 * timeUp - a private helper method that returns a boolean to determine if time is up or not, based on
+	 * the values of this.hours and this.minutes (assuming that this.timeLimitExists() evaluates to true)
+	 * @return - returns true if time is up, returns false otherwise
+	 */
+	private boolean timeUp() {
+		return LocalTime.now().isAfter(this.ending_time);
 	}
 
 
@@ -317,6 +347,47 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 
 
 	/**
+	 * citiesFileExists - a private helper method that determines if the xml file storing townships exists,
+	 * and returns true if this file exists
+	 * @return - returns true if the file exists, returns false otherwise
+	 */
+	private boolean citiesFileExists() {
+		String currentPath = System.getProperty("user.dir");
+		Path pwd = Paths.get(currentPath);
+		String fname_for_cities_left = this.configurations.getProperty("cities_left_fname");
+		Path xml_path = pwd.resolve(fname_for_cities_left);
+		File xml_cities_file = new File(xml_path.toString());
+		boolean xml_cities_file_exists = xml_cities_file.exists();
+		return xml_cities_file_exists;
+	}
+
+
+	/**
+	 * removePrivacyPolicyButon - a private method that checks if the privacy policy is there on the screen,
+	 * and clicks the button to close it
+	 * - the method also maximizes the window
+	 * @return - returns nothing (void)
+	 */
+	private void removePrivacyPolicyButon() {
+		this.driver.manage().window().maximize();
+		String privacy_policy_selector = this.configurations.getProperty("privacy_policy_selector");
+		boolean element_exists = this.elementExists(
+			new By.ByCssSelector(privacy_policy_selector), this.driver, 30, 1000L
+		);
+		if (element_exists) {
+			WebElement privacy_policy_close_button = this.fluentWait(
+				new By.ByCssSelector(privacy_policy_selector), this.driver, 30, 1000L
+			);
+			new Actions(this.driver)
+				.moveToElement(privacy_policy_close_button)
+				.click()
+				.pause(Duration.ofMillis(1000))
+				.perform();
+		}
+	}
+
+
+	/**
 	 * getAllCities - a private helper method that searches for all cities in Canada where there is at
 	 * least one store
 	 * - when you try to change your store location on websites of grocery chains owned by Loblaws, there is
@@ -325,13 +396,18 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 	 *   list of stores, and each entry will be added in this.cities
 	 *  @return - returns nothing (void)
 	 * */
-	private void getAllCities() throws InterruptedException {
+	private void getAllCities() throws InterruptedException, XMLStreamException {
+		String fname_for_cities_left = this.configurations.getProperty("cities_left_fname");
+		String root_tag_name = this.configurations.getProperty("root_cities_tag");
+		String city_tag_name = this.configurations.getProperty("individual_city_tag");
+		XMLParser cities_file_xml_stream = new XMLParser(
+			fname_for_cities_left, root_tag_name, city_tag_name
+		);
 		String location_button_selector = this.configurations.getProperty("location_button");
 		String change_location_selector = this.configurations.getProperty("change_location_button");
 		WebElement location_button = this.fluentWait(
 			new By.ByCssSelector(location_button_selector), this.driver, 30, 1000L
 		);
-		this.driver.manage().window().maximize();
 		location_button.click();
 		WebElement change_location_button = this.fluentWait(
 			new By.ByCssSelector(change_location_selector), this.driver, 30, 1000L
@@ -356,15 +432,7 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		StringBuilder store_location_text_selector = new StringBuilder(
 			this.configurations.getProperty("store_location_text_selector")
 		);
-		String privacy_policy_selector = this.configurations.getProperty("privacy_policy_selector");
-		WebElement privacy_policy_close_button = this.fluentWait(
-			new By.ByCssSelector(privacy_policy_selector), this.driver, 30, 1000L
-		);
-		new Actions(this.driver)
-			.moveToElement(privacy_policy_close_button)
-			.click()
-			.pause(Duration.ofMillis(1000))
-			.perform();
+		this.removePrivacyPolicyButon();
 		while (
 			this.elementExists(
 				new By.ByCssSelector(store_info_container_selector.toString()), this.driver, 30, 500L
@@ -389,6 +457,12 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 			store_info_container_selector.replace(
 				num_index, (num_index + num_length), Integer.toString(counter)
 			);
+			if (this.timeLimitExists()) {
+				cities_file_xml_stream.createXMLNode(city_tag_name, city_province_combination);
+			}
+		}
+		if (this.timeLimitExists()) {
+			cities_file_xml_stream.closeProductXmlOutputStream();
 		}
 	}
 
@@ -866,6 +940,7 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		By submenu_item_locator = new By.ByCssSelector(submenu_item_selector_in_main_menu.toString());
 		By main_menu_item_locator = new By.ByCssSelector(main_menu_item_selector.toString());
 		this.changeLocation(township);
+		this.startTimer();
 		main_menu_item_exists = this.elementExistsAndIsInteractable(
 			main_menu_item_locator, this.driver, 5, 100L
 		);
@@ -983,6 +1058,10 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 	 */
 	public void loadXML() throws InterruptedException, XMLStreamException {
 		FirefoxOptions options = new FirefoxOptions();
+		String fname_for_cities_left = this.configurations.getProperty("cities_left_fname");
+		String root_tag_name = this.configurations.getProperty("root_cities_tag");
+		String city_tag_name = this.configurations.getProperty("individual_city_tag");
+		DOMParser cities_xml_dom_parser = new DOMParser(fname_for_cities_left, root_tag_name, city_tag_name);
 		// https://stackoverflow.com/questions/13959704/accepting-sharing-location-browser-popups-through-selenium-webdriver
 		options.addPreference("geo.prompt.testing", true);
 		options.addPreference("geo.prompt.testing.allow", true);
@@ -991,10 +1070,25 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		//);
 		this.driver = new FirefoxDriver(options);
 		this.driver.get(this.configurations.getProperty("url"));
-		this.getAllCities();
-		Set<String> unique_cities = this.cities.keySet();
-		for (String city: unique_cities) {
-			this.gatherPricesForTownship(city);
+		boolean cities_file_exists = this.citiesFileExists();
+		if (!cities_file_exists) {
+			this.getAllCities();
+		}
+		if (this.timeLimitExists()) {
+			while (cities_xml_dom_parser.hasNext()) {
+				String township = cities_xml_dom_parser.next();
+				this.removePrivacyPolicyButon();
+				this.gatherPricesForTownship(township);
+				if (this.timeUp()) {
+					cities_xml_dom_parser.writeXML();
+					break;
+				}
+			}
+		} else {
+			Set<String> unique_cities = this.cities.keySet();
+			for (String city: unique_cities) {
+				this.gatherPricesForTownship(city);
+			}
 		}
 		this.xml_parser.closeProductXmlOutputStream();
 		this.driver.quit();

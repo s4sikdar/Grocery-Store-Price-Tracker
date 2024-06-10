@@ -136,30 +136,31 @@ public class XMLParser {
 
 
 	/**
-	 * createXMLNode: a private helper method to create an xml node (code taken from the following link:
+	 * createXMLNode: a public helper method to create an xml node (code taken from the following link:
 	 * https://www.geeksforgeeks.org/xml-eventwriter-in-java-stax/)
 	 * @param xml_event_writer - an XMLEventWriter instance
 	 * @param node_name - a String representing the node name
 	 * @param node_value - a String representing the node value
 	 * @return - returns nothing (void)
 	 */
-	private void createXMLNode(XMLEventWriter xml_event_writer, String node_name, String node_value) 
+	public void createXMLNode(String node_name, String node_value) 
 		throws XMLStreamException {
 		assert ((node_name.trim().length()) > 0);
+		this.openProductXmlOutputStream();
 		XMLEvent tab_element = this.xml_event_factory.createDTD("\t");
 		StartElement start_tag = this.xml_event_factory.createStartElement("", "", node_name);
-		this.add_tabs(xml_event_writer, 1);
-		xml_event_writer.add(start_tag);
+		this.add_tabs(this.xml_event_writer, 1);
+		this.xml_event_writer.add(start_tag);
 		Characters content = this.xml_event_factory.createCharacters(node_value);
-		xml_event_writer.add(content);
+		this.xml_event_writer.add(content);
 		EndElement end_tag = this.xml_event_factory.createEndElement("", "", node_name);
-		xml_event_writer.add(end_tag);
-		xml_event_writer.add(this.xml_endline);
+		this.xml_event_writer.add(end_tag);
+		this.xml_event_writer.add(this.xml_endline);
 	}
 
 
 	/**
-	 * createXMLNode: a private helper method to create an xml node (code taken from the following link:
+	 * createXMLNode: a public helper method to create an xml node (code taken from the following link:
 	 * https://www.geeksforgeeks.org/xml-eventwriter-in-java-stax/)
 	 * @param xml_event_writer - an XMLEventWriter instance
 	 * @param node_name - a String representing the node name (must be non-empty excluding whitespaces)
@@ -167,18 +168,19 @@ public class XMLParser {
 	 * @param tabs - an integer represnting the number of tabs to indent the tag (must be larger than 0)
 	 * @return - returns nothing (void)
 	 */
-	private void createXMLNode(XMLEventWriter xml_event_writer, String node_name, String node_value, int tabs)
+	public void createXMLNode(String node_name, String node_value, int tabs)
 		throws XMLStreamException {
 		assert ((node_name.trim().length()) > 0);
 		assert (tabs >= 0);
+		this.openProductXmlOutputStream();
 		StartElement start_tag = this.xml_event_factory.createStartElement("", "", node_name);
 		this.add_tabs(xml_event_writer, tabs);
-		xml_event_writer.add(start_tag);
+		this.xml_event_writer.add(start_tag);
 		Characters content = this.xml_event_factory.createCharacters(node_value);
-		xml_event_writer.add(content);
+		this.xml_event_writer.add(content);
 		EndElement end_tag = this.xml_event_factory.createEndElement("", "", node_name);
-		xml_event_writer.add(end_tag);
-		xml_event_writer.add(this.xml_endline);
+		this.xml_event_writer.add(end_tag);
+		this.xml_event_writer.add(this.xml_endline);
 	}
 
 
@@ -208,7 +210,7 @@ public class XMLParser {
 		this.xml_event_writer.add(start_tag);
 		this.xml_event_writer.add(this.xml_endline);
 		for (String key: keys) {
-			this.createXMLNode(this.xml_event_writer, key, mapping.get(key), 2);
+			this.createXMLNode(key, mapping.get(key), 2);
 		}
 		this.add_tabs(this.xml_event_writer, 1);
 		this.xml_event_writer.add(end_tag);
