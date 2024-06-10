@@ -143,7 +143,7 @@ public class XMLParser {
 	 * @param node_value - a String representing the node value
 	 * @return - returns nothing (void)
 	 */
-	public void createXMLNode(String node_name, String node_value) 
+	public void createXMLNode(String node_name, String node_value)
 		throws XMLStreamException {
 		assert ((node_name.trim().length()) > 0);
 		this.openProductXmlOutputStream();
