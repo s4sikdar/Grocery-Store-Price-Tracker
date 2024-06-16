@@ -3,14 +3,15 @@ import java.lang.*;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.InputStream;
-import java.io.File;
+import java.util.stream.Stream;
+import java.io.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.io.IOException;
-import java.time.Duration;
+import java.nio.file.Files;
+import java.nio.file.DirectoryStream;
+import java.nio.file.DirectoryIteratorException;
+import java.time.*;
+import java.time.format.DateTimeFormatter;
 import javax.xml.stream.*;
 import javax.xml.stream.events.*;
 
@@ -24,15 +25,61 @@ public class XMLParser {
 	private XMLEventFactory xml_event_factory;
 	private XMLEvent xml_endline;
 	private boolean xml_ostream_accessed;
+	private boolean add_name_suffix;
 	private String xml_filename;
 	private String root_tag;
 	private String mapping_tag;
+	private String current_output_xml_filename;
+	private String current_input_xml_filename;
+	private ArrayList<String> matched_xml_filenames;
+	private String date_pattern;
+	private String glob_pattern;
+
 
 	public XMLParser(String xml_filename, String root_tag, String mapping_tag) {
+		this.setProperties(xml_filename, root_tag, mapping_tag, false);
+	}
+
+
+	public XMLParser(String xml_filename, String mapping_tag) {
+		this.setProperties(xml_filename, "", mapping_tag, false);
+	}
+
+
+	public XMLParser(String xml_filename, String root_tag, String mapping_tag, boolean name_suffix) {
+		this.setProperties(xml_filename, root_tag, mapping_tag, name_suffix);
+	}
+
+
+	public XMLParser(String xml_filename, String mapping_tag, boolean name_suffix) {
+		this.setProperties(xml_filename, "", mapping_tag, name_suffix);
+	}
+
+
+	/**
+	 * setProperties - a private method that is responsible for setting instance properties in the
+	 * constructor
+	 * @param xml_filename - a string representing the xml filename
+	 * @param root_tag - a string representing the xml root tag
+	 * @param mapping_tag - a string representing the xml mapping tag (the tag that contains product
+	 * data information on a single product in a single store)
+	 * @return - returns nothing (void)
+	 */
+	private void setProperties(String xml_filename, String root_tag, String mapping_tag, boolean name_suffix) {
                 this.xml_ostream_accessed = false;
+                this.add_name_suffix = name_suffix;
 		this.xml_filename = xml_filename;
 		this.root_tag = root_tag;
 		this.mapping_tag = mapping_tag;
+		// the string pattern derived from the date and time when the file is created,
+		// which will be added to the xml filename to give each xml file a unique name.
+		this.date_pattern = "-MMM-dd-yyyy-HH-mm";
+		String[] prefix_and_suffix = xml_filename.split("\\.");
+		// the globbing pattern for which all xml files with product entries will be matched by
+		this.glob_pattern = prefix_and_suffix[0] +
+		"-[A-Za-z][A-Za-z][A-Za-z]-[0-9][0-9]-[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]" +
+		"." + prefix_and_suffix[1];
+		this.matched_xml_filenames = new ArrayList<String>();
 	}
 
 
@@ -47,7 +94,17 @@ public class XMLParser {
 			boolean file_already_exists;
 			String currentPath = System.getProperty("user.dir");
 			Path pwd = Paths.get(currentPath);
-			Path xml_path = pwd.resolve(this.xml_filename);
+			String[] prefix_and_extension = this.xml_filename.split("\\.");
+			DateTimeFormatter formatter = DateTimeFormatter.ofPattern(this.date_pattern);
+			LocalDateTime current_time = LocalDateTime.now();
+			String formatted_date = current_time.format(formatter);
+			String xml_fname = prefix_and_extension[0] + formatted_date + "." + prefix_and_extension[1];
+			if (this.add_name_suffix) {
+				this.current_output_xml_filename = xml_fname;
+			} else {
+				this.current_output_xml_filename = this.xml_filename;
+			}
+			Path xml_path = pwd.resolve(this.current_output_xml_filename);
 			XMLOutputFactory xmlOutputFactory = XMLOutputFactory.newInstance();
 			try {
 				File xml_file = new File(xml_path.toString());
@@ -58,16 +115,18 @@ public class XMLParser {
 				);
 				this.xml_event_factory = XMLEventFactory.newInstance();
 				this.xml_endline = this.xml_event_factory.createDTD("\n");
-				StartElement root_element = this.xml_event_factory.createStartElement(
-					"", "", this.root_tag
-				);
 				StartDocument start_document = this.xml_event_factory.createStartDocument();
 				if (!file_already_exists) {
 					this.xml_event_writer.add(start_document);
 					this.xml_event_writer.add(this.xml_endline);
 				}
-				this.xml_event_writer.add(root_element);
-				this.xml_event_writer.add(this.xml_endline);
+				if (this.root_tag != "") {
+					StartElement root_element = this.xml_event_factory.createStartElement(
+						"", "", this.root_tag
+					);
+					this.xml_event_writer.add(root_element);
+					this.xml_event_writer.add(this.xml_endline);
+				}
 				this.xml_ostream_accessed = true;
 			} catch (Throwable t) {
 				t.printStackTrace();
@@ -84,11 +143,37 @@ public class XMLParser {
 	 * */
 	public void closeProductXmlOutputStream() throws XMLStreamException {
 		if (this.xml_ostream_accessed) {
-			this.xml_event_writer.add(this.xml_event_factory.createEndElement("", "", this.root_tag));
-			this.xml_event_writer.add(this.xml_endline);
+			if (this.root_tag != "") {
+				this.xml_event_writer.add(
+					this.xml_event_factory.createEndElement("", "", this.root_tag)
+				);
+				this.xml_event_writer.add(this.xml_endline);
+			}
 			this.xml_event_writer.add(this.xml_event_factory.createEndDocument());
 			this.xml_event_writer.close();
 		}
+	}
+
+
+	/**
+	 * listSourceFiles - a private helper method that lists all files in a directory that match the
+	 * globbing pattern of this.glob_pattern, code was taken and slightly modified from
+	 * DirectoryStream documentation:
+	 * https://docs.oracle.com/javase%2F8%2Fdocs%2Fapi%2F%2F/java/nio/file/DirectoryStream.html
+	 * @return - a ArrayList<String> instance of all files that match this.glob_pattern
+	 * @throws IOException
+	 */
+	private ArrayList<String> listSourceFiles(Path directory) throws IOException {
+		ArrayList<String> result = new ArrayList<>();
+		try (DirectoryStream<Path> stream = Files.newDirectoryStream(directory, this.glob_pattern)) {
+		   for (Path entry: stream) {
+		       result.add(entry.toString());
+		   }
+		} catch (DirectoryIteratorException ex) {
+		   // I/O error encounted during the iteration, the cause is an IOException
+		   throw ex.getCause();
+		}
+		return result;
 	}
 
 
@@ -103,11 +188,15 @@ public class XMLParser {
 		boolean file_already_exists;
 		String currentPath = System.getProperty("user.dir");
 		Path pwd = Paths.get(currentPath);
-		Path xml_path = pwd.resolve(this.xml_filename);
-		XMLInputFactory xml_input_factory = XMLInputFactory.newInstance();
 		try {
+			ArrayList<String> files_in_pwd = this.listSourceFiles(pwd);
+			this.matched_xml_filenames = files_in_pwd;
+			this.current_input_xml_filename = this.matched_xml_filenames.get(0);
+			this.matched_xml_filenames.remove(0);
+			Path xml_path = pwd.resolve(this.current_input_xml_filename);
+			XMLInputFactory xml_input_factory = XMLInputFactory.newInstance();
 			File xml_file = new File(xml_path.toString());
-			file_already_exists = !(xml_file.createNewFile());
+			file_already_exists = xml_file.exists();
 			this.xml_istream = new FileInputStream(xml_file);
 			this.xml_event_reader = xml_input_factory.createXMLEventReader(this.xml_istream);
 			this.xml_event_factory = XMLEventFactory.newInstance();
@@ -238,6 +327,34 @@ public class XMLParser {
 				if (name.equals(this.mapping_tag)) {
 					return true;
 				}
+			}
+		}
+		String currentPath = System.getProperty("user.dir");
+		Path pwd = Paths.get(currentPath);
+		while (!(this.matched_xml_filenames.isEmpty())) {
+			try {
+				this.current_input_xml_filename = this.matched_xml_filenames.get(0);
+				this.matched_xml_filenames.remove(0);
+				Path xml_path = pwd.resolve(this.current_input_xml_filename);
+				XMLInputFactory xml_input_factory = XMLInputFactory.newInstance();
+				File xml_file = new File(xml_path.toString());
+				//file_already_exists = !(xml_file.createNewFile());
+				this.xml_istream = new FileInputStream(xml_file);
+				this.xml_event_reader = xml_input_factory.createXMLEventReader(this.xml_istream);
+				this.xml_event_factory = XMLEventFactory.newInstance();
+				while (this.xml_event_reader.hasNext()) {
+					XMLEvent next_event = this.xml_event_reader.nextEvent();
+					if (next_event.isStartElement()) {
+						StartElement start_element = next_event.asStartElement();
+						name = start_element.getName().getLocalPart();
+						if (name.equals(this.mapping_tag)) {
+							return true;
+						}
+					}
+				}
+			} catch (FileNotFoundException err) {
+				err.printStackTrace();
+				return false;
 			}
 		}
 		return false;

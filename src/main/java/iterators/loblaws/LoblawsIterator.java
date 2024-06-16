@@ -2,13 +2,17 @@ package iterators.loblaws;
 import java.lang.*;
 import java.util.*;
 import java.time.*;
+import java.time.Duration;
 import java.time.temporal.ChronoUnit;
+import java.time.format.DateTimeFormatter;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
+import java.util.stream.Stream;
 import java.io.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.time.Duration;
+import java.nio.file.Files;
+import java.nio.file.DirectoryStream;
 import org.openqa.selenium.Alert;
 import org.openqa.selenium.WindowType;
 import org.openqa.selenium.JavascriptExecutor;
@@ -46,6 +50,7 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 	private int minutes;
 	private LocalTime ending_time;
 	private boolean timer_started;
+	private boolean privacy_policy_button_removed;
 
 
 	public LoblawsIterator(String config_file_path) {
@@ -81,6 +86,7 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		this.driver = null;
 		this.event_reader_opened = false;
 		this.timer_started = false;
+		this.privacy_policy_button_removed = false;
 		File filename = new File(this.fpath);
                 this.configurations = new Properties();
 		try {
@@ -88,7 +94,7 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 			String xml_filename = this.configurations.getProperty("data_xml_filename");
 			String root_tag = this.configurations.getProperty("root_xml_tag");
 			String mapping_tag = this.configurations.getProperty("mapping_tag");
-			this.xml_parser = new XMLParser(xml_filename, root_tag, mapping_tag);
+			this.xml_parser = new XMLParser(xml_filename, root_tag, mapping_tag, true);
 		} catch (Throwable t) {
 			t.printStackTrace();
 		}
@@ -372,18 +378,15 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		this.driver.manage().window().maximize();
 		String privacy_policy_selector = this.configurations.getProperty("privacy_policy_selector");
 		boolean element_exists = this.elementExists(
-			new By.ByCssSelector(privacy_policy_selector), this.driver, 30, 1000L
+			new By.ByCssSelector(privacy_policy_selector), this.driver, 60, 1000L
 		);
 		if (element_exists) {
 			WebElement privacy_policy_close_button = this.fluentWait(
 				new By.ByCssSelector(privacy_policy_selector), this.driver, 30, 1000L
 			);
-			new Actions(this.driver)
-				.moveToElement(privacy_policy_close_button)
-				.click()
-				.pause(Duration.ofMillis(1000))
-				.perform();
+			privacy_policy_close_button.click();
 		}
+		this.privacy_policy_button_removed = true;
 	}
 
 
@@ -397,6 +400,7 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 	 *  @return - returns nothing (void)
 	 * */
 	private void getAllCities() throws InterruptedException, XMLStreamException {
+		boolean not_included = true;
 		String fname_for_cities_left = this.configurations.getProperty("cities_left_fname");
 		String root_tag_name = this.configurations.getProperty("root_cities_tag");
 		String city_tag_name = this.configurations.getProperty("individual_city_tag");
@@ -432,7 +436,9 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		StringBuilder store_location_text_selector = new StringBuilder(
 			this.configurations.getProperty("store_location_text_selector")
 		);
-		this.removePrivacyPolicyButon();
+		if (!this.privacy_policy_button_removed) {
+			this.removePrivacyPolicyButon();
+		}
 		while (
 			this.elementExists(
 				new By.ByCssSelector(store_info_container_selector.toString()), this.driver, 30, 500L
@@ -450,7 +456,16 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 			);
 			city_and_province[0] = city_and_province[0].trim();
 			String city_province_combination = city_and_province[0];
-			this.cities.putIfAbsent(city_province_combination, new Boolean(true));
+			Set<String> cities_listed = this.cities.keySet();
+			not_included = true;
+			for (String city: cities_listed) {
+				if (city.equalsIgnoreCase(city_province_combination)) {
+					not_included = false;
+				}
+			}
+			if (not_included) {
+				this.cities.put(city_province_combination, new Boolean(true));
+			}
 			int num_index = store_info_container_selector.indexOf(Integer.toString(counter));
 			int num_length = Integer.toString(counter).length();
 			counter++;
@@ -458,7 +473,9 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 				num_index, (num_index + num_length), Integer.toString(counter)
 			);
 			if (this.timeLimitExists()) {
-				cities_file_xml_stream.createXMLNode(city_tag_name, city_province_combination);
+				if (not_included) {
+					cities_file_xml_stream.createXMLNode(city_tag_name, city_province_combination);
+				}
 			}
 		}
 		if (this.timeLimitExists()) {
@@ -940,6 +957,9 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		By submenu_item_locator = new By.ByCssSelector(submenu_item_selector_in_main_menu.toString());
 		By main_menu_item_locator = new By.ByCssSelector(main_menu_item_selector.toString());
 		this.changeLocation(township);
+		if (!this.privacy_policy_button_removed) {
+			this.removePrivacyPolicyButon();
+		}
 		this.startTimer();
 		main_menu_item_exists = this.elementExistsAndIsInteractable(
 			main_menu_item_locator, this.driver, 5, 100L
@@ -1077,7 +1097,6 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		if (this.timeLimitExists()) {
 			while (cities_xml_dom_parser.hasNext()) {
 				String township = cities_xml_dom_parser.next();
-				this.removePrivacyPolicyButon();
 				this.gatherPricesForTownship(township);
 				if (this.timeUp()) {
 					cities_xml_dom_parser.writeXML();
