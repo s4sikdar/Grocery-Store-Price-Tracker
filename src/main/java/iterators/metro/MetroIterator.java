@@ -38,4 +38,4 @@ import iterators.GroceryStorePriceScraper;
 import iterators.xml.*;
 
 
-public class LoblawsIterator implements GroceryStorePriceScraper {}
+public class MetroIterator implements GroceryStorePriceScraper {}
