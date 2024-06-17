@@ -1103,10 +1103,27 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 					break;
 				}
 			}
+			if (!(cities_xml_dom_parser.hasNext())) {
+				cities_xml_dom_parser.delete();
+			}
 		} else {
-			Set<String> unique_cities = this.cities.keySet();
-			for (String city: unique_cities) {
-				this.gatherPricesForTownship(city);
+			if (cities_file_exists) {
+				while (cities_xml_dom_parser.hasNext()) {
+					String township = cities_xml_dom_parser.next();
+					this.gatherPricesForTownship(township);
+					if (this.timeUp()) {
+						cities_xml_dom_parser.writeXML();
+						break;
+					}
+				}
+				if (!(cities_xml_dom_parser.hasNext())) {
+					cities_xml_dom_parser.delete();
+				}
+			} else {
+				Set<String> unique_cities = this.cities.keySet();
+				for (String city: unique_cities) {
+					this.gatherPricesForTownship(city);
+				}
 			}
 		}
 		this.xml_parser.closeProductXmlOutputStream();

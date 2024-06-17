@@ -3,6 +3,7 @@ import java.lang.*;
 import java.io.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.Files;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.transform.Transformer;
@@ -28,6 +29,7 @@ public class DOMParser {
 	private String root_tag;
 	private String mapping_tag;
 	private File xml_file;
+	private Path xml_path;
 	private DocumentBuilderFactory document_factory;
 	private DocumentBuilder builder;
 	private Document doc;
@@ -56,7 +58,8 @@ public class DOMParser {
 			Path pwd = Paths.get(currentPath);
 			Path xml_path = pwd.resolve(this.xml_filename);
 			try {
-				this.xml_file = new File(xml_path.toString());
+				this.xml_path = xml_path;
+				this.xml_file = new File(this.xml_path.toString());
 				this.file_exists = xml_file.exists();
 				if (this.file_exists) {
 					this.document_factory = DocumentBuilderFactory.newInstance();
@@ -184,6 +187,20 @@ public class DOMParser {
 			System.out.println(err.getMessage());
 			Throwable error = err;
 			error.printStackTrace();
+		}
+	}
+
+
+	/**
+	 * delete - a public method to delete the XML file if it exists
+	 * @return - returns nothing (void)
+	 */
+	public void delete() {
+		try {
+			Files.deleteIfExists(this.xml_path);
+		} catch (IOException err) {
+			this.xml_file.delete();
+			err.printStackTrace();
 		}
 	}
 }
