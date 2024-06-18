@@ -498,7 +498,7 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		String element_text = element.getText();
 		boolean string_is_contained;
 		String main_menu_items_to_ignore = this.configurations.getProperty("main_menu_items_to_ignore");
-		String[] items_to_ignore = main_menu_items_to_ignore.split(",");
+		String[] items_to_ignore = main_menu_items_to_ignore.split(";");
 		for (String item_to_ignore: items_to_ignore) {
 			string_is_contained = element_text.toLowerCase().contains(item_to_ignore.toLowerCase());
 			if (string_is_contained) {
@@ -526,8 +526,8 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		String element_text = element.getText();
 		String grocery_submenu_items_to_ignore = this.configurations.getProperty("grocery_sub_menu_items_to_ignore");
 		String home_beauty_items_to_ignore = this.configurations.getProperty("home_beauty_submenu_items_to_ignore");
-		String[] grocery_items_to_ignore = grocery_submenu_items_to_ignore.split(",");
-		String[] home_items_to_ignore = home_beauty_items_to_ignore.split(",");
+		String[] grocery_items_to_ignore = grocery_submenu_items_to_ignore.split(";");
+		String[] home_items_to_ignore = home_beauty_items_to_ignore.split(";");
 		String[] items_to_ignore = grocery_items_to_ignore;
 		int opening_brace_index = css_selector.indexOf("(");
 		int closing_brace_index = css_selector.indexOf(")", opening_brace_index);
