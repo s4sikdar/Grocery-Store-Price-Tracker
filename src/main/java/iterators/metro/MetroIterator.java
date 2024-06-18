@@ -38,4 +38,25 @@ import iterators.GroceryStorePriceScraper;
 import iterators.xml.*;
 
 
-public class MetroIterator implements GroceryStorePriceScraper {}
+public class MetroIterator implements GroceryStorePriceScraper {
+	private int counter;
+	private HashMap<String, String> numbers;
+
+
+	public MetroIterator() {
+		this.counter = 0;
+	}
+
+
+	public boolean hasNext() throws XMLStreamException {
+		return (this.counter < 100);
+	}
+
+	public HashMap<String, String> next() throws XMLStreamException {
+		this.numbers.clear();
+		this.numbers.put(Integer.toString(this.counter), Integer.toString(this.counter));
+		return this.numbers;
+	}
+
+
+}
