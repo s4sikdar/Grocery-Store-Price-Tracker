@@ -777,6 +777,11 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		}
 		driver.close();
 		driver.switchTo().window(original_window);
+		String date_pattern = "-MMM-dd-yyyy-HH-mm";
+		DateTimeFormatter formatter = DateTimeFormatter.ofPattern(date_pattern);
+		LocalDateTime current_time = LocalDateTime.now();
+		String formatted_date = current_time.format(formatter);
+		product_info.put("date", formatted_date);
 		return product_info;
 	}
 
