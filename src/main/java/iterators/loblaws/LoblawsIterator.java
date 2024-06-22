@@ -742,47 +742,82 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		String original_window = this.driver.getWindowHandle();
 		driver.switchTo().newWindow(WindowType.TAB);
 		driver.get(href_address);
-		WebElement product_name = this.fluentWait(product_name_locator, this.driver, 30, 100L);
-		WebElement price_value = this.fluentWait(price_value_locator, this.driver, 30, 100L);
-		WebElement price_unit = this.fluentWait(price_unit_locator, this.driver, 30, 100L);
-		String price_info = price_value.getText() + " " + price_unit.getText();
-		product_info.put("product_name", product_name.getText());
-		product_info.put("price_info", price_info);
-		product_info.put("township_location", township);
-		boolean brand_name_exists = this.elementExists(brand_name_locator, this.driver, 1, 100L);
-		boolean package_size_exists = this.elementExists(package_size_locator, this.driver, 1, 100L);
-		boolean comparison_price_value_exists = this.elementExists(
-			comparison_price_value_locator, this.driver, 2, 100L
-		);
-		boolean comparison_price_unit_exists = this.elementExists(
-			comparison_price_unit_locator, this.driver, 2, 100L
-		);
-		if (brand_name_exists) {
-			WebElement brand_name = this.driver.findElement(brand_name_locator);
-			product_info.put("brand_name", brand_name.getText());
-		}
-		if (package_size_exists) {
-			WebElement package_size_info = this.driver.findElement(package_size_locator);
-			product_info.put("package_size", package_size_info.getText());
-		}
-		if (comparison_price_value_exists && comparison_price_unit_exists) {
-			WebElement comparison_price_value = this.fluentWait(
-				comparison_price_value_locator, this.driver, 5, 100L
+		try {
+			WebElement product_name = this.fluentWait(product_name_locator, this.driver, 30, 100L);
+			WebElement price_value = this.fluentWait(price_value_locator, this.driver, 30, 100L);
+			WebElement price_unit = this.fluentWait(price_unit_locator, this.driver, 30, 100L);
+			String price_info = price_value.getText() + " " + price_unit.getText();
+			product_info.put("product_name", product_name.getText());
+			product_info.put("price_info", price_info);
+			product_info.put("township_location", township);
+			boolean brand_name_exists = this.elementExists(brand_name_locator, this.driver, 1, 100L);
+			boolean package_size_exists = this.elementExists(package_size_locator, this.driver, 1, 100L);
+			boolean comparison_price_value_exists = this.elementExists(
+				comparison_price_value_locator, this.driver, 2, 100L
 			);
-			WebElement comparison_price_unit = this.fluentWait(
-				comparison_price_unit_locator, this.driver, 5, 100L
+			boolean comparison_price_unit_exists = this.elementExists(
+				comparison_price_unit_locator, this.driver, 2, 100L
 			);
-			String comparison_unit_price = comparison_price_value.getText() + " " + comparison_price_unit.getText();
-			product_info.put("unit_price_for_comparison", comparison_unit_price);
+			if (brand_name_exists) {
+				WebElement brand_name = this.driver.findElement(brand_name_locator);
+				product_info.put("brand_name", brand_name.getText());
+			}
+			if (package_size_exists) {
+				WebElement package_size_info = this.driver.findElement(package_size_locator);
+				product_info.put("package_size", package_size_info.getText());
+			}
+			if (comparison_price_value_exists && comparison_price_unit_exists) {
+				WebElement comparison_price_value = this.fluentWait(
+					comparison_price_value_locator, this.driver, 5, 100L
+				);
+				WebElement comparison_price_unit = this.fluentWait(
+					comparison_price_unit_locator, this.driver, 5, 100L
+				);
+				String comparison_unit_price = comparison_price_value.getText() + " "
+								+ comparison_price_unit.getText();
+				product_info.put("unit_price_for_comparison", comparison_unit_price);
+			}
+			driver.close();
+			driver.switchTo().window(original_window);
+		} catch (Throwable err) {
+			driver.close();
+			driver.switchTo().window(original_window);
+			return product_info;
 		}
-		driver.close();
-		driver.switchTo().window(original_window);
 		String date_pattern = "-MMM-dd-yyyy-HH-mm";
 		DateTimeFormatter formatter = DateTimeFormatter.ofPattern(date_pattern);
 		LocalDateTime current_time = LocalDateTime.now();
 		String formatted_date = current_time.format(formatter);
 		product_info.put("date", formatted_date);
 		return product_info;
+	}
+
+
+	/**
+	 * scrapeProductInfoWithRetries - a helper method to scrape product information with a given number of
+	 * retries in case the page doesn't load the first time
+	 * - after the given number of retries, return an empty hashmap as the result
+	 * @param township - a string representing the township where the price is being scraped (will be added to
+	 * the hashmap of product info)
+	 * @param product_info_link_selector - a StringBuilder representing the CSS Selector for the link to more
+	 * information about the product (will be opened in a separate tab, and the information will be scraped)
+	 * @param retries - an integer representing the number of retries that are left to scrape the product's
+	 * information (must be greater than or equal to 0)
+	 */
+	private HashMap<String, String> scrapeProductInfoWithRetries(
+			String township, StringBuilder product_info_link_selector, int retries
+	) {
+		assert(retries >= 0);
+		HashMap<String, String> information = this.scrapeProductInfo(township, product_info_link_selector);
+		if (information.isEmpty()) {
+			if (retries == 0) {
+				HashMap<String, String> result = new HashMap<>();
+				return result;
+			}
+			return this.scrapeProductInfoWithRetries(township, product_info_link_selector, (retries - 1));
+		} else {
+			return information;
+		}
 	}
 
 
@@ -844,8 +879,10 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 					product_parent_container_locator, this.driver, 5, 250L
 				);
 				js.executeScript("arguments[0].scrollIntoView(true);", product_parent_container);
-				price_data = this.scrapeProductInfo(city, product_info_link_selector);
-				this.xml_parser.hashmapToXML(price_data);
+				price_data = this.scrapeProductInfoWithRetries(city, product_info_link_selector, 3);
+				if (!(price_data.isEmpty())) {
+					this.xml_parser.hashmapToXML(price_data);
+				}
 				product_parent_container_selector = this.incrementSelectorDigit(
 					product_parent_container_selector
 				);
