@@ -45,6 +45,8 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 	private Properties configurations;
 	private WebDriver driver;
 	private HashMap<String, Boolean> cities;
+	private ArrayList<String> categories_left;
+	private ArrayList<String> subcategories_left;
 	private XMLParser xml_parser;
 	private int hours;
 	private int minutes;
@@ -54,23 +56,23 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 
 
 	public LoblawsIterator(String config_file_path) {
-		this.setUpConfigAndXML(config_file_path);
 		this.hours = 0;
 		this.minutes = 0;
+		this.setUpConfigAndXML(config_file_path);
 	}
 
 
 	public LoblawsIterator(String config_file_path, int hours) {
-		this.setUpConfigAndXML(config_file_path);
 		this.hours = hours;
 		this.minutes = 0;
+		this.setUpConfigAndXML(config_file_path);
 	}
 
 
 	public LoblawsIterator(String config_file_path, int hours, int minutes) {
-		this.setUpConfigAndXML(config_file_path);
 		this.hours = hours;
 		this.minutes = minutes;
+		this.setUpConfigAndXML(config_file_path);
 	}
 
 
@@ -89,6 +91,8 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		this.privacy_policy_button_removed = false;
 		File filename = new File(this.fpath);
                 this.configurations = new Properties();
+		this.categories_left = new ArrayList<String>();
+		this.subcategories_left = new ArrayList<String>();
 		try {
 			this.configurations.load(new FileInputStream(config_file_path));
 			String xml_filename = this.configurations.getProperty("data_xml_filename");
@@ -120,8 +124,8 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 	private void startTimer() {
 		if ((this.timeLimitExists()) && (!this.timer_started)) {
 			this.ending_time = LocalTime.now();
-			this.ending_time.plus(this.hours, ChronoUnit.HOURS);
-			this.ending_time.plus(this.minutes, ChronoUnit.MINUTES);
+			this.ending_time = this.ending_time.plus(this.hours, ChronoUnit.HOURS);
+			this.ending_time = this.ending_time.plus(this.minutes, ChronoUnit.MINUTES);
 			this.timer_started = true;
 		}
 	}
@@ -377,14 +381,26 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 	private void removePrivacyPolicyButon() {
 		this.driver.manage().window().maximize();
 		String privacy_policy_selector = this.configurations.getProperty("privacy_policy_selector");
-		boolean element_exists = this.elementExists(
+		String second_privacy_policy_selector = this.configurations.getProperty(
+			"second_privacy_policy_selector"
+		);
+		boolean first_privacy_policy_button_exists = this.elementExists(
 			new By.ByCssSelector(privacy_policy_selector), this.driver, 60, 1000L
 		);
-		if (element_exists) {
+		boolean second_privacy_policy_button_exists = this.elementExists(
+			new By.ByCssSelector(second_privacy_policy_selector), this.driver, 20, 500L
+		);
+		if (first_privacy_policy_button_exists) {
 			WebElement privacy_policy_close_button = this.fluentWait(
 				new By.ByCssSelector(privacy_policy_selector), this.driver, 30, 1000L
 			);
 			privacy_policy_close_button.click();
+		}
+		if (second_privacy_policy_button_exists) {
+			WebElement second_privacy_policy_close_button = this.fluentWait(
+				new By.ByCssSelector(second_privacy_policy_selector), this.driver, 30, 1000L
+			);
+			second_privacy_policy_close_button.click();
 		}
 		this.privacy_policy_button_removed = true;
 	}
@@ -967,6 +983,126 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 
 
 	/**
+	 * obtainCategories - a private method that gets all main menu categories and stores them in this.categories_left,
+	 * an ArrayList<String> instance
+	 * - is used when a time limit is specified, and therefore you have to keep track of what categories/subcategories
+	 *   are left to determine where to pick up from next time
+	 * @return - returns nothing (void)
+	 */
+	private void obtainCategories() {
+		StringBuilder main_menu_item_selector;
+		By main_menu_item_locator;
+		boolean main_menu_item_exists;
+		boolean main_menu_item_to_ignore;
+		WebElement main_menu_item;
+		main_menu_item_selector = new StringBuilder(
+			this.configurations.getProperty("main_menu_item_selector")
+		);
+		main_menu_item_locator = new By.ByCssSelector(main_menu_item_selector.toString());
+		main_menu_item_exists = this.elementExists(
+			main_menu_item_locator, this.driver, 5, 100L
+		);
+		while (main_menu_item_exists) {
+			main_menu_item = this.fluentWait(main_menu_item_locator, this.driver, 5, 500L);
+			main_menu_item_to_ignore = this.menuItemToBeIgnored(main_menu_item);
+			if (!main_menu_item_to_ignore) {
+				String main_menu_item_text = main_menu_item.getText();
+				this.categories_left.add(0, main_menu_item_text);
+			}
+			main_menu_item_selector = this.incrementSelectorDigit(main_menu_item_selector);
+			main_menu_item_locator = new By.ByCssSelector(main_menu_item_selector.toString());
+			main_menu_item_exists = this.elementExists(
+				main_menu_item_locator, this.driver, 5, 100L
+			);
+		}
+	}
+
+
+	/**
+	 * obtainSubcategories - a private method that gets all main menu categories and stores them in
+	 * this.subcategories_left, an ArrayList<String> instance
+	 * - is used when a time limit is specified, and therefore you have to keep track of what categories/subcategories
+	 *   are left to determine where to pick up from next time
+	 * @param - submenu_item_selector - a StringBuilder representing the submenu item selector (the CSS selector
+	 * for the submenu item in question)
+	 * @return - returns nothing (void)
+	 */
+	private void obtainSubcategories(StringBuilder submenu_item_selector) {
+		By submenu_item_locator;
+		boolean submenu_item_exists;
+		boolean submenu_item_to_ignore;
+		WebElement submenu_item;
+		int submenu_li_child_index;
+		submenu_item_locator = new By.ByCssSelector(submenu_item_selector.toString());
+		submenu_item_exists = this.elementExists(
+			submenu_item_locator, this.driver, 5, 100L
+		);
+		submenu_li_child_index = this.getNumFromConfigurationsFile("starting_index_for_submenu_item");
+		while (submenu_item_exists) {
+			submenu_item = this.fluentWait(submenu_item_locator, this.driver, 5, 500L);
+			submenu_item_to_ignore = this.submenuItemToBeIgnored(
+				submenu_item, submenu_item_selector.toString()
+			);
+			if (!submenu_item_to_ignore) {
+				String submenu_item_text = submenu_item.getText();
+				this.subcategories_left.add(0, submenu_item_text);
+			}
+			submenu_item_selector = this.incrementSelectorDigit(
+				submenu_item_selector, submenu_li_child_index
+			);
+			submenu_item_locator = new By.ByCssSelector(submenu_item_selector.toString());
+			submenu_item_exists = this.elementExists(
+				submenu_item_locator, this.driver, 5, 100L
+			);
+		}
+	}
+
+
+	/**
+	 * writeCategoriesLeft - a private helper method that writes all of the Strings in this.categories_left to an
+	 * XML file, with the filename, root tag name, and the tag name for each entry being dependent on the
+	 * configuration file represented by this.configurations
+	 * @return - returns nothing (void)
+	 */
+	private void writeCategoriesLeft() throws XMLStreamException {
+		String categories_left_fname = this.configurations.getProperty("categories_left_fname");
+		String root_categories_tag = this.configurations.getProperty("root_categories_tag");
+		String individual_category_tag = this.configurations.getProperty("individual_category_tag");
+		XMLParser categories_left_xml = new XMLParser(
+			categories_left_fname, root_categories_tag, individual_category_tag
+		);
+		for (String category: this.categories_left) {
+			categories_left_xml.createXMLNode(
+				individual_category_tag, category
+			);
+		}
+		categories_left_xml.closeProductXmlOutputStream();
+	}
+
+
+	/**
+	 * writeSubCategoriesLeft - a private helper method that writes all of the Strings in this.subcategories_left
+	 * to an XML file, with the filename, root tag name, and the tag name for each entry being dependent on the
+	 * configuration file represented by this.configurations
+	 * @return - returns nothing (void)
+	 */
+	private void writeSubCategoriesLeft() throws XMLStreamException {
+		String subcategories_left_fname = this.configurations.getProperty("subcategories_left_fname");
+		String root_subcategories_tag = this.configurations.getProperty("root_subcategories_tag");
+		String individual_subcategory_tag = this.configurations.getProperty("individual_subcategory_tag");
+		XMLParser subcategories_left_xml = new XMLParser(
+			subcategories_left_fname, root_subcategories_tag, individual_subcategory_tag
+		);
+		for (String subcategory: this.subcategories_left) {
+			subcategories_left_xml.createXMLNode(
+				individual_subcategory_tag, subcategory
+			);
+		}
+		subcategories_left_xml.closeProductXmlOutputStream();
+	}
+
+
+	/**
 	 * gatherPricesForTownship - a private helper method that will change the store location to one being in
 	 * a given township, and then for that store it will go over all categories of products, and all products
 	 * in all subcategories of those categories
@@ -1002,11 +1138,14 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		if (!this.privacy_policy_button_removed) {
 			this.removePrivacyPolicyButon();
 		}
-		this.startTimer();
 		main_menu_item_exists = this.elementExistsAndIsInteractable(
 			main_menu_item_locator, this.driver, 5, 100L
 		);
+		if (this.timeLimitExists()) {
+			this.obtainCategories();
+		}
 		while (main_menu_item_exists) {
+			this.startTimer();
 			main_menu_item = this.fluentWait(main_menu_item_locator, this.driver, 30, 1000L);
 			main_menu_item_to_ignore = this.menuItemToBeIgnored(main_menu_item);
 			if (main_menu_item_to_ignore) {
@@ -1032,6 +1171,10 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 			submenu_item_exists = this.elementExistsAndIsInteractable(
 				submenu_item_locator, this.driver, 30, 100L
 			);
+			if (this.timeLimitExists()) {
+				this.subcategories_left.clear();
+				this.obtainSubcategories(submenu_item_selector_in_main_menu);
+			}
 			while (submenu_item_exists) {
 				WebElement submenu_item = this.fluentWait(submenu_item_locator, this.driver, 30, 1000L);
 				submenu_item_to_ignore = this.submenuItemToBeIgnored(
@@ -1085,6 +1228,12 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 							current_submenu_locator, this.driver, 10, 1000L
 						);
 					}
+					this.subcategories_left.remove(0);
+					if (this.timeUp()) {
+						this.writeSubCategoriesLeft();
+						this.writeCategoriesLeft();
+						return;
+					}
 				}
 				submenu_item_selector_in_main_menu = this.incrementSelectorDigit(
 					submenu_item_selector_in_main_menu, submenu_li_child_index
@@ -1101,6 +1250,11 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 				submenu_item_selector_in_main_menu, 1, submenu_li_child_index
 			);
 			submenu_item_locator = new By.ByCssSelector(submenu_item_selector_in_main_menu.toString());
+			this.categories_left.remove(0);
+			if (this.timeUp()) {
+				this.writeCategoriesLeft();
+				return;
+			}
 			main_menu_item_selector = this.incrementSelectorDigit(main_menu_item_selector);
 			main_menu_item_locator = new By.ByCssSelector(main_menu_item_selector.toString());
 			main_menu_item_exists = this.elementExistsAndIsInteractable(main_menu_item_locator, this.driver, 5, 100L);
