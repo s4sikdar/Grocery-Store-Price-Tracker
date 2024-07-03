@@ -1007,7 +1007,7 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 			main_menu_item_to_ignore = this.menuItemToBeIgnored(main_menu_item);
 			if (!main_menu_item_to_ignore) {
 				String main_menu_item_text = main_menu_item.getText();
-				this.categories_left.add(0, main_menu_item_text);
+				this.categories_left.add(main_menu_item_text);
 			}
 			main_menu_item_selector = this.incrementSelectorDigit(main_menu_item_selector);
 			main_menu_item_locator = new By.ByCssSelector(main_menu_item_selector.toString());
@@ -1045,7 +1045,7 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 			);
 			if (!submenu_item_to_ignore) {
 				String submenu_item_text = submenu_item.getText();
-				this.subcategories_left.add(0, submenu_item_text);
+				this.subcategories_left.add(submenu_item_text);
 			}
 			submenu_item_selector = this.incrementSelectorDigit(
 				submenu_item_selector, submenu_li_child_index
