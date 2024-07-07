@@ -19,6 +19,7 @@ import org.w3c.dom.Entity;
 import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
+import org.w3c.dom.DOMException;
 
 
 public class DOMParser {
@@ -34,6 +35,7 @@ public class DOMParser {
 	private DocumentBuilder builder;
 	private Document doc;
 	private Node current_node;
+	private Node previous_node;
 	private Node root_node;
 
 
@@ -145,12 +147,20 @@ public class DOMParser {
 	public String next() {
 		this.parse();
 		String text = this.getText(this.current_node);
-		this.root_node.removeChild(this.current_node);
+		if (this.previous_node != null) {
+			this.root_node.removeChild(this.previous_node);
+		}
 		NodeList mapping_tags = this.doc.getElementsByTagName(this.mapping_tag);
 		int length = mapping_tags.getLength();
+		int counter = this.counter + 1;
 		if (length > 0) {
-			this.current_node = mapping_tags.item(this.counter);
-			this.root_node = this.current_node.getParentNode();
+			this.previous_node = this.current_node;
+			if ((this.current_node == this.previous_node) && (length == 1)) {
+				this.root_node.removeChild(this.current_node);
+			} else {
+				this.current_node = mapping_tags.item(counter);
+				this.root_node = this.current_node.getParentNode();
+			}
 		}
 		return text;
 	}
