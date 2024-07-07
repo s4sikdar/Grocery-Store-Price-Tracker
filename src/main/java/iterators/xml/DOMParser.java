@@ -196,6 +196,7 @@ public class DOMParser {
 	 * @return - returns nothing (void)
 	 */
 	public void delete() {
+		this.parse();
 		try {
 			Files.deleteIfExists(this.xml_path);
 		} catch (IOException err) {

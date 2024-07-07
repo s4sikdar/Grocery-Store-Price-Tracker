@@ -373,6 +373,38 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 
 
 	/**
+	 * categoriesFileExists - a private helper method that determines if the xml file storing categories exists,
+	 * and returns true if this file exists
+	 * @return - returns true if the file exists, returns false otherwise
+	 */
+	private boolean categoriesFileExists() {
+		String currentPath = System.getProperty("user.dir");
+		Path pwd = Paths.get(currentPath);
+		String fname_for_cities_left = this.configurations.getProperty("categories_left_fname");
+		Path xml_path = pwd.resolve(fname_for_cities_left);
+		File xml_cities_file = new File(xml_path.toString());
+		boolean xml_cities_file_exists = xml_cities_file.exists();
+		return xml_cities_file_exists;
+	}
+
+
+	/**
+	 * subcategoriesFileExists - a private helper method that determines if the xml file storing subcategories
+	 * exists, and returns true if this file exists
+	 * @return - returns true if the file exists, returns false otherwise
+	 */
+	private boolean subcategoriesFileExists() {
+		String currentPath = System.getProperty("user.dir");
+		Path pwd = Paths.get(currentPath);
+		String fname_for_cities_left = this.configurations.getProperty("subcategories_left_fname");
+		Path xml_path = pwd.resolve(fname_for_cities_left);
+		File xml_cities_file = new File(xml_path.toString());
+		boolean xml_cities_file_exists = xml_cities_file.exists();
+		return xml_cities_file_exists;
+	}
+
+
+	/**
 	 * removePrivacyPolicyButon - a private method that checks if the privacy policy is there on the screen,
 	 * and clicks the button to close it
 	 * - the method also maximizes the window
@@ -1115,6 +1147,7 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 	 */
 	private void gatherPricesForTownship(String township) throws InterruptedException, XMLStreamException {
 		int index_after_brackets;
+		int index = 0;
 		boolean item_to_be_ignored;
 		boolean menu_item_to_select;
 		boolean submenu_item_to_ignore;
@@ -1123,6 +1156,22 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		boolean main_menu_item_to_ignore;
 		int submenu_li_child_index;
 		WebElement main_menu_item;
+		String fname_for_categories_left = this.configurations.getProperty("categories_left_fname");
+		String root_tag_name = this.configurations.getProperty("root_categories_tag");
+		String category_tag_name = this.configurations.getProperty("individual_category_tag");
+		String fname_for_subcategories_left = this.configurations.getProperty("subcategories_left_fname");
+		String subcategory_root_tag_name = this.configurations.getProperty("root_subcategories_tag");
+		String subcategory_tag_name = this.configurations.getProperty("individual_subcategory_tag");
+		String main_menu_text;
+		String submenu_text;
+		DOMParser categories_left = new DOMParser(
+			fname_for_categories_left, root_tag_name, category_tag_name
+		);
+		DOMParser subcategories_left = new DOMParser(
+			fname_for_subcategories_left, subcategory_root_tag_name, subcategory_tag_name
+		);
+		boolean categories_file_exists = this.categoriesFileExists();
+		boolean subcategories_file_exists = this.subcategoriesFileExists();
 		JavascriptExecutor js = (JavascriptExecutor) this.driver;
 		StringBuilder main_menu_item_selector = new StringBuilder(
 			this.configurations.getProperty("main_menu_item_selector")
@@ -1142,12 +1191,22 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 			main_menu_item_locator, this.driver, 5, 100L
 		);
 		if (this.timeLimitExists()) {
-			this.obtainCategories();
+			if (!categories_file_exists) {
+				this.obtainCategories();
+			} else {
+				while (categories_left.hasNext()) {
+					this.categories_left.add(categories_left.next());
+				}
+			}
 		}
 		while (main_menu_item_exists) {
 			this.startTimer();
 			main_menu_item = this.fluentWait(main_menu_item_locator, this.driver, 30, 1000L);
+			main_menu_text = main_menu_item.getText();
 			main_menu_item_to_ignore = this.menuItemToBeIgnored(main_menu_item);
+			main_menu_item_to_ignore = (
+				main_menu_item_to_ignore || (this.categories_left.indexOf(main_menu_text) == -1)
+			);
 			if (main_menu_item_to_ignore) {
 				submenu_item_selector_in_main_menu = this.incrementSelectorDigit(
 					submenu_item_selector_in_main_menu
@@ -1172,13 +1231,25 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 				submenu_item_locator, this.driver, 30, 100L
 			);
 			if (this.timeLimitExists()) {
-				this.subcategories_left.clear();
-				this.obtainSubcategories(submenu_item_selector_in_main_menu);
+				if (!subcategories_file_exists) {
+					this.subcategories_left.clear();
+					this.obtainSubcategories(submenu_item_selector_in_main_menu);
+				} else {
+					this.subcategories_left.clear();
+					while (subcategories_left.hasNext()) {
+						this.subcategories_left.add(subcategories_left.next());
+					}
+				}
 			}
 			while (submenu_item_exists) {
 				WebElement submenu_item = this.fluentWait(submenu_item_locator, this.driver, 30, 1000L);
+				submenu_text = submenu_item.getText();
 				submenu_item_to_ignore = this.submenuItemToBeIgnored(
 					submenu_item, submenu_item_selector_in_main_menu.toString()
+				);
+				submenu_item_to_ignore = (
+					submenu_item_to_ignore ||
+					(this.subcategories_left.indexOf(submenu_text) == -1)
 				);
 				if (!submenu_item_to_ignore) {
 					this.pauseThenClick(submenu_item, 200);
@@ -1228,8 +1299,16 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 							current_submenu_locator, this.driver, 10, 1000L
 						);
 					}
-					this.subcategories_left.remove(0);
+					index = this.subcategories_left.indexOf(submenu_text);
+					if (index != -1) {
+						this.subcategories_left.remove(index);
+						if (this.subcategories_left.isEmpty()) {
+							subcategories_left.delete();
+						}
+					}
 					if (this.timeUp()) {
+						subcategories_left.delete();
+						categories_left.delete();
 						this.writeSubCategoriesLeft();
 						this.writeCategoriesLeft();
 						return;
@@ -1250,8 +1329,16 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 				submenu_item_selector_in_main_menu, 1, submenu_li_child_index
 			);
 			submenu_item_locator = new By.ByCssSelector(submenu_item_selector_in_main_menu.toString());
-			this.categories_left.remove(0);
+			main_menu_text = main_menu_item.getText();
+			index = this.categories_left.indexOf(main_menu_text);
+			if (index != -1) {
+				this.categories_left.remove(index);
+				if (this.categories_left.isEmpty()) {
+					categories_left.delete();
+				}
+			}
 			if (this.timeUp()) {
+				categories_left.delete();
 				this.writeCategoriesLeft();
 				return;
 			}
