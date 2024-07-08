@@ -36,6 +36,7 @@ import org.openqa.selenium.support.ui.ExpectedConditions;
 import javax.xml.stream.XMLStreamException;
 import iterators.GroceryStorePriceScraper;
 import iterators.xml.*;
+import iterators.util.*;
 
 
 
@@ -625,129 +626,6 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 
 
 	/**
-	 * incrementSelectorDigit - a private helper method that gets a number from inside of selector (starting
-	 * from index starting_index) and then returns a copy of selector with the number incremented
-	 * @param selector - a constant StringBuilder representing a css selector that has a number in it 
-	 * in between round brackets (this number must be at an index that is greater than or equal to
-	 * starting_index plus one, and the StringBuilder must have a length of at least 3)
-	 * @param starting_index - an integer representing the starting index from where to look for the number
-	 * (starting_index must be greater than or equal to 0, and less than the length of the string derived
-	 * from selector)
-	 * @return - returns a new StringBuilder instance with the integer incremented if the integer and the
-	 * surrounding round brackets can be found, returns a copy of the passed in StringBuilder from selector
-	 * otherwise
-	 */
-	private StringBuilder incrementSelectorDigit(final StringBuilder selector, int starting_index) {
-		assert (selector.toString().length() >= 3);
-		assert ((0 <= starting_index) && (starting_index < (selector.toString().length())));
-		StringBuilder new_selector = new StringBuilder(selector.toString());
-		int opening_brace_index = new_selector.indexOf("(", starting_index);
-		if (opening_brace_index == -1) {
-			return new_selector;
-		}
-		int closing_brace_index = new_selector.indexOf(")", opening_brace_index);
-		String number_between_brackets = new_selector.substring(
-			(opening_brace_index + 1), closing_brace_index
-		);
-		int translated_number = Integer.parseInt(number_between_brackets);
-		translated_number++;
-		new_selector.replace(
-			(opening_brace_index + 1), closing_brace_index, Integer.toString(translated_number)
-		);
-		return new_selector;
-	}
-
-
-	/**
-	 * incrementSelectorDigit - a private helper method that gets a number from inside of selector and
-	 * then returns a copy of selector with the number incremented (the number is inside round brackets)
-	 * @param selector - a constant StringBuilder representing a css selector that has a number in it 
-	 * in between round brackets
-	 * @return - returns a new StringBuilder instance with the integer incremented if the integer and the
-	 * surrounding round brackets can be found, returns a copy of the passed in StringBuilder from selector
-	 * otherwise
-	 */
-	private StringBuilder incrementSelectorDigit(final StringBuilder selector) {
-		assert (selector.toString().length() >= 3);
-		StringBuilder new_selector = new StringBuilder(selector.toString());
-		int opening_brace_index = new_selector.indexOf("(");
-		if (opening_brace_index == -1) {
-			return new_selector;
-		}
-		int closing_brace_index = new_selector.indexOf(")", opening_brace_index);
-		String number_between_brackets = new_selector.substring(
-			(opening_brace_index + 1), closing_brace_index
-		);
-		int translated_number = Integer.parseInt(number_between_brackets);
-		translated_number++;
-		new_selector.replace(
-			(opening_brace_index + 1), closing_brace_index, Integer.toString(translated_number)
-		);
-		return new_selector;
-	}
-
-
-	/**
-	 * changeSelectorDigit - a private helper method that gets a number from inside of selector and
-	 * then returns a copy of selector with the number replaced by digit
-	 * @param selector - a constant StringBuilder representing a css selector that has a number in it 
-	 * in between round brackets
-	 * @return - returns a new StringBuilder instance with the integer incremented if the integer and the
-	 * surrounding round brackets can be found, returns a copy of the passed in StringBuilder from selector
-	 * otherwise
-	 */
-	private StringBuilder changeSelectorDigit(final StringBuilder selector, int digit) {
-		assert (selector.toString().length() >= 3);
-		StringBuilder new_selector = new StringBuilder(selector.toString());
-		int opening_brace_index = new_selector.indexOf("(");
-		if (opening_brace_index == -1) {
-			return new_selector;
-		}
-		int closing_brace_index = new_selector.indexOf(")", opening_brace_index);
-		String number_between_brackets = new_selector.substring(
-			(opening_brace_index + 1), closing_brace_index
-		);
-		new_selector.replace(
-			(opening_brace_index + 1), closing_brace_index, Integer.toString(digit)
-		);
-		return new_selector;
-	}
-
-
-	/**
-	 * changeSelectorDigit - a private helper method that gets a number from inside of selector and
-	 * then returns a copy of selector with the number replaced by digit
-	 * - the index of the number has to be at least starting_index plus one
-	 * @param selector - a constant StringBuilder representing a css selector that has a number in it 
-	 * in between round brackets (the resulting string of the selector must have a length of at least 3)
-	 * @param starting_index - an integer representing the index of where to start looking for the opening
-	 * round bracket for which the number is stored inside (i.e. where to start looking for "(" in "(3)")
-	 * - starting_index has to be at least 0 and less than the length of the resulting string produced
-	 *   from selector
-	 * @return - returns a new StringBuilder instance with the integer incremented if the integer and the
-	 * surrounding round brackets can be found, returns a copy of the passed in StringBuilder from selector
-	 * otherwise
-	 */
-	private StringBuilder changeSelectorDigit(final StringBuilder selector, int digit, int starting_index) {
-		assert (selector.toString().length() >= 3);
-		assert ((0 <= starting_index) && (starting_index < (selector.toString().length())));
-		StringBuilder new_selector = new StringBuilder(selector.toString());
-		int opening_brace_index = new_selector.indexOf("(", starting_index);
-		if (opening_brace_index == -1) {
-			return new_selector;
-		}
-		int closing_brace_index = new_selector.indexOf(")", opening_brace_index);
-		String number_between_brackets = new_selector.substring(
-			(opening_brace_index + 1), closing_brace_index
-		);
-		new_selector.replace(
-			(opening_brace_index + 1), closing_brace_index, Integer.toString(digit)
-		);
-		return new_selector;
-	}
-
-
-	/**
 	 * scrapeProductInfo - a private helper method that scrapes all of the information available on the
 	 * product and returns a HashMap<String, String> instance with all available product information
 	 * - This method will open the link in a new tab, and bring that tab into focus, the link being to
@@ -912,10 +790,10 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 				// Below javascript code from: https://stackoverflow.com/questions/42982950/how-to-scroll-down-the-page-till-bottomend-page-in-the-selenium-webdriver
 				js.executeScript("window.scrollTo(0, document.body.scrollHeight);");
 				this.pauseThenClick(next_button, 500);
-				product_parent_container_selector = this.changeSelectorDigit(
+				product_parent_container_selector = SelectorOperations.changeSelectorDigit(
 					product_parent_container_selector, 1
 				);
-				product_info_link_selector = this.changeSelectorDigit(
+				product_info_link_selector = SelectorOperations.changeSelectorDigit(
 					product_info_link_selector, 1
 				);
 				product_parent_container_locator = new By.ByCssSelector(
@@ -931,10 +809,10 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 				if (!(price_data.isEmpty())) {
 					this.xml_parser.hashmapToXML(price_data);
 				}
-				product_parent_container_selector = this.incrementSelectorDigit(
+				product_parent_container_selector = SelectorOperations.incrementSelectorDigit(
 					product_parent_container_selector
 				);
-				product_info_link_selector = this.incrementSelectorDigit(product_info_link_selector);
+				product_info_link_selector = SelectorOperations.incrementSelectorDigit(product_info_link_selector);
 				product_parent_container_locator = new By.ByCssSelector(
 					product_parent_container_selector.toString()
 				);
@@ -1041,7 +919,7 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 				String main_menu_item_text = main_menu_item.getText();
 				this.categories_left.add(main_menu_item_text);
 			}
-			main_menu_item_selector = this.incrementSelectorDigit(main_menu_item_selector);
+			main_menu_item_selector = SelectorOperations.incrementSelectorDigit(main_menu_item_selector);
 			main_menu_item_locator = new By.ByCssSelector(main_menu_item_selector.toString());
 			main_menu_item_exists = this.elementExists(
 				main_menu_item_locator, this.driver, 5, 100L
@@ -1079,7 +957,7 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 				String submenu_item_text = submenu_item.getText();
 				this.subcategories_left.add(submenu_item_text);
 			}
-			submenu_item_selector = this.incrementSelectorDigit(
+			submenu_item_selector = SelectorOperations.incrementSelectorDigit(
 				submenu_item_selector, submenu_li_child_index
 			);
 			submenu_item_locator = new By.ByCssSelector(submenu_item_selector.toString());
@@ -1208,16 +1086,16 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 				main_menu_item_to_ignore || (this.categories_left.indexOf(main_menu_text) == -1)
 			);
 			if (main_menu_item_to_ignore) {
-				submenu_item_selector_in_main_menu = this.incrementSelectorDigit(
+				submenu_item_selector_in_main_menu = SelectorOperations.incrementSelectorDigit(
 					submenu_item_selector_in_main_menu
 				);
-				submenu_item_selector_in_main_menu = this.changeSelectorDigit(
+				submenu_item_selector_in_main_menu = SelectorOperations.changeSelectorDigit(
 					submenu_item_selector_in_main_menu, 1, submenu_li_child_index
 				);
 				submenu_item_locator = new By.ByCssSelector(
 					submenu_item_selector_in_main_menu.toString()
 				);
-				main_menu_item_selector = this.incrementSelectorDigit(main_menu_item_selector);
+				main_menu_item_selector = SelectorOperations.incrementSelectorDigit(main_menu_item_selector);
 				main_menu_item_locator = new By.ByCssSelector(main_menu_item_selector.toString());
 				main_menu_item_exists = this.elementExistsAndIsInteractable(
 					main_menu_item_locator, this.driver, 5, 100L
@@ -1285,10 +1163,10 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 							parent_level_button_locator,this.driver, 30, 1000L
 						);
 						this.pauseThenClickThenPause(parent_menu_button, 200, 300);
-						item_under_second_submenu_selector = this.incrementSelectorDigit(
+						item_under_second_submenu_selector = SelectorOperations.incrementSelectorDigit(
 							item_under_second_submenu_selector, index_after_brackets
 						);
-						see_all_link_selector = this.incrementSelectorDigit(
+						see_all_link_selector = SelectorOperations.incrementSelectorDigit(
 							see_all_link_selector, index_after_brackets
 						);
 						current_submenu_locator = new By.ByCssSelector(
@@ -1314,7 +1192,7 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 						return;
 					}
 				}
-				submenu_item_selector_in_main_menu = this.incrementSelectorDigit(
+				submenu_item_selector_in_main_menu = SelectorOperations.incrementSelectorDigit(
 					submenu_item_selector_in_main_menu, submenu_li_child_index
 				);
 				submenu_item_locator = new By.ByCssSelector(submenu_item_selector_in_main_menu.toString());
@@ -1322,10 +1200,10 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 				this.pauseThenClick(main_menu_item, 200);
 				submenu_item_exists = this.elementExistsAndIsInteractable(submenu_item_locator, this.driver, 30, 100L);
 			}
-			submenu_item_selector_in_main_menu = this.incrementSelectorDigit(
+			submenu_item_selector_in_main_menu = SelectorOperations.incrementSelectorDigit(
 				submenu_item_selector_in_main_menu
 			);
-			submenu_item_selector_in_main_menu = this.changeSelectorDigit(
+			submenu_item_selector_in_main_menu = SelectorOperations.changeSelectorDigit(
 				submenu_item_selector_in_main_menu, 1, submenu_li_child_index
 			);
 			submenu_item_locator = new By.ByCssSelector(submenu_item_selector_in_main_menu.toString());
@@ -1342,7 +1220,7 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 				this.writeCategoriesLeft();
 				return;
 			}
-			main_menu_item_selector = this.incrementSelectorDigit(main_menu_item_selector);
+			main_menu_item_selector = SelectorOperations.incrementSelectorDigit(main_menu_item_selector);
 			main_menu_item_locator = new By.ByCssSelector(main_menu_item_selector.toString());
 			main_menu_item_exists = this.elementExistsAndIsInteractable(main_menu_item_locator, this.driver, 5, 100L);
 		}
