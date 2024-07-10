@@ -1,0 +1,257 @@
+package iterators.util;
+import java.lang.*;
+import java.util.*;
+import java.time.*;
+import java.util.function.Function;
+import org.openqa.selenium.Alert;
+import org.openqa.selenium.WindowType;
+import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.By;
+import org.openqa.selenium.Keys;
+import org.openqa.selenium.interactions.Actions;
+import org.openqa.selenium.NoSuchElementException;
+import org.openqa.selenium.ElementNotInteractableException;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.firefox.FirefoxDriver;
+import org.openqa.selenium.firefox.FirefoxOptions;
+import org.openqa.selenium.firefox.ProfilesIni;
+import org.openqa.selenium.firefox.FirefoxProfile;
+import org.openqa.selenium.remote.DesiredCapabilities;
+import org.openqa.selenium.support.ui.Wait;
+import org.openqa.selenium.support.ui.WebDriverWait;
+import org.openqa.selenium.support.ui.FluentWait;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+
+public class WebElementOperations {
+
+
+	/**
+	 * pauseThenClick: a public static method that moves the mouse over an element (passed in), pauses
+	 * for a duration of milliseconds (passed in parameter), and then clicks the element
+	 * - it first scrolls the element into view using the org.openqa.selenium.JavascriptExecutor class
+	 *   via the executeScript method (necessary if the element is not currently in the viewport)
+	 * @param element - the element you want to hover and click on (is an instance of
+	 * org.openqa.selenium.WebElement)
+	 * @param pause_timeout - an integer representing the number of milliseconds to pause
+	 * (using Duration.ofMillis)
+	 * @param driver - a WebDriver instance representing the webdriver that will be used
+	 * @return - returns nothing (void)
+	 * */
+	public static void pauseThenClick(WebElement element, int pause_timeout, WebDriver driver) {
+		JavascriptExecutor js = (JavascriptExecutor) driver;
+		js.executeScript("arguments[0].scrollIntoView(false);", element);
+		try{
+			new Actions(driver)
+				.moveToElement(element)
+				.pause(Duration.ofMillis(pause_timeout))
+				.click().perform();
+		} catch (org.openqa.selenium.interactions.MoveTargetOutOfBoundsException e) {
+			js.executeScript("arguments[0].scrollIntoView(true);", element);
+			new Actions(driver)
+				.moveToElement(element)
+				.pause(Duration.ofMillis(pause_timeout))
+				.click().perform();
+		}
+	}
+
+
+	/**
+	 * pauseThenClickThenPause: a public static method that moves the mouse over an element (passed in),
+	 * pauses for a duration of milliseconds (passed in parameter), and then clicks the element
+	 * - it first scrolls the element into view using the org.openqa.selenium.JavascriptExecutor class
+	 *   via the executeScript method (necessary if the element is not currently in the viewport)
+	 * @param element - the element you want to hover and click on (is an instance of
+	 * org.openqa.selenium.WebElement)
+	 * @param pause_timeout - an integer representing the number of milliseconds to pause
+	 * (using Duration.ofMillis)
+	 * @param post_click_timeout - an integer representing the number of milliseconds to pause
+	 * (using Duration.ofMillis) after clicking the element
+	 * @param driver - a WebDriver instance representing the webdriver that will be used
+	 * @return - returns nothing (void)
+	 * */
+	public static void pauseThenClickThenPause(
+		WebElement element, int pause_timeout, int post_click_timeout, WebDriver driver
+	) {
+		JavascriptExecutor js = (JavascriptExecutor) driver;
+		js.executeScript("arguments[0].scrollIntoView(false);", element);
+		new Actions(driver)
+			.moveToElement(element)
+			.pause(Duration.ofMillis(pause_timeout))
+			.click()
+			.pause(Duration.ofMillis(post_click_timeout))
+			.perform();
+	}
+
+
+	/**
+	 * fluentWait - a public static method that waits for an element to be available, and then returns
+	 * a reference to the element
+	 * The code was taken from the below stackoverflow link:
+	 * https://stackoverflow.com/questions/12858972/how-can-i-ask-the-selenium-webdriver-to-wait-for-few-seconds-in-java
+	 * @param locator - the locator that you will use to locate the element (this is an instance of
+	 * org.openqa.selenium.By)
+	 * @param driver - an instance of org.openqa.selenium.WebDriver representing a reference to the
+	 * webdriver used
+	 * @param timeout_duration - an integer that represents how long to wait for the element in seconds
+	 * @param polling_duration - an instance of java.lang.Long that represents how long to wait for
+	 * the element in milliseconds
+	 * @return an instance of the web element that you are looking to find with the locator parameter
+	 * @throws org.openqa.selenium.NoSuchElementException (throws this exception if the element is not
+	 * found in timeout_duration number of seconds)
+	 * */
+	public static WebElement fluentWait(
+		final By locator, WebDriver driver, int timeout_duration, long polling_duration
+	) {
+		Wait<WebDriver> wait = new FluentWait<WebDriver>(driver)
+		    .withTimeout(Duration.ofSeconds(timeout_duration))
+		    .pollingEvery(Duration.ofMillis(polling_duration))
+		    .ignoring(NoSuchElementException.class);
+		WebElement foo = wait.until(new Function<WebDriver, WebElement>() {
+			public WebElement apply(WebDriver driver) {
+			    return driver.findElement(locator);
+			}
+		});
+		return foo;
+	}
+
+
+	/**
+	 * fluentWaitTillVisibleandClickable - a public static method that waits for an element to be
+	 * present in the Document Object Model of an HTML page as well as visible (visible on the page
+	 * and having a height and width being greater than 0), then returning a reference to the element
+	 * The code was taken from the below stackoverflow link:
+	 * https://stackoverflow.com/questions/12858972/how-can-i-ask-the-selenium-webdriver-to-wait-for-few-seconds-in-java
+	 * @param locator - the locator that you will use to locate the element (this is an instance of
+	 * org.openqa.selenium.By)
+	 * @param driver - an instance of org.openqa.selenium.WebDriver representing a reference to the
+	 * webdriver used
+	 * @param timeout_duration - an integer that represents how long to wait for the element in seconds
+	 * @param polling_duration - an instance of java.lang.Long that represents how long to wait for
+	 * the element in milliseconds
+	 * @return an instance of the web element that you are looking to find with the locator parameter
+	 * @throws org.openqa.selenium.NoSuchElementException (throws this exception if the element is not
+	 * found in timeout_duration number of seconds)
+	 * */
+	public static WebElement fluentWaitTillVisibleandClickable(
+		final By locator, WebDriver driver, int timeout_duration, long polling_duration
+	) {
+		WebDriverWait wait = new WebDriverWait(
+			driver, Duration.ofSeconds(timeout_duration), Duration.ofMillis(polling_duration)
+		);
+		wait.until(ExpectedConditions.and(
+			ExpectedConditions.presenceOfElementLocated(locator),
+			ExpectedConditions.visibilityOfElementLocated(locator)
+		));
+		WebElement element_in_question = driver.findElement(locator);
+		return element_in_question;
+	}
+
+
+	/**
+	 * elementExists - a public static method that waits for an element to be available, and then
+	 * returns true if the element is found within the given timeout duration, returns false otherwise
+	 * @param locator - the locator that you will use to locate the element (this is an instance of
+	 * org.openqa.selenium.By)
+	 * @param driver - an instance of org.openqa.selenium.WebDriver representing a reference to the
+	 * webdriver used
+	 * @param timeout_duration - an integer that represents how long to wait for the element in seconds
+	 * @param polling_duration - an instance of java.lang.Long that represents how long to wait for
+	 * the element in milliseconds
+	 * @return true if the element was found, false otherwise
+	 * */
+	public static boolean elementExists(
+		final By locator, WebDriver driver, int timeout_duration, long polling_duration
+	) {
+		try {
+			WebElement element_to_find = WebElementOperations.fluentWait(
+				locator, driver, timeout_duration, polling_duration
+			);
+			if (element_to_find != null) {
+				return true;
+			} else {
+				return false;
+			}
+		} catch (Throwable err) {
+			return false;
+		}
+	}
+
+
+	/**
+	 * elementExistsAndIsInteractable - a public static method that waits for an element to be
+	 * present in the Document Object Model of an HTML page as well as visible (visible on the page
+	 * and having a height and width being greater than 0)
+	 * - then returns true if the element is found within the given time out duration
+	 *   (returns false otherwise)
+	 * @param locator - the locator that you will use to locate the element (this is an instance of
+	 * org.openqa.selenium.By)
+	 * @param driver - an instance of org.openqa.selenium.WebDriver representing a reference to the
+	 * webdriver used
+	 * @param timeout_duration - an integer that represents how long to wait for the element in seconds
+	 * @param polling_duration - an instance of java.lang.Long that represents how long to wait for
+	 * the element in milliseconds
+	 * @return true if the element was found, false otherwise
+	 * */
+	public static boolean elementExistsAndIsInteractable(
+		final By locator, WebDriver driver, int timeout_duration, long polling_duration
+	) {
+		try {
+			WebElement element_to_find = WebElementOperations.fluentWaitTillVisibleandClickable(
+				locator, driver, timeout_duration, polling_duration
+			);
+			if (element_to_find != null) {
+				return true;
+			} else {
+				return false;
+			}
+		} catch (Throwable err) {
+			return false;
+		}
+	}
+
+
+	/**
+	 * tryClickingElement - a public static method to try and click an element you wish to find with
+	 * the locator parameter as the locator
+	 * - It will first try to find and then click the element, and if an error is thrown it checks if
+	 *   the element is there
+	 * - If the element is not there, then do nothing, otherwise get the element and try to click on it
+	 *   using an ActionChain (throw the error if this fails)
+	 * @param locator - the locator that you will use to locate the element (this is an instance of
+	 * org.openqa.selenium.By)
+	 * @param driver - an instance of org.openqa.selenium.WebDriver representing a reference to the
+	 * webdriver used
+	 * @param timeout_duration - an integer that represents how long to wait for the element in seconds
+	 * @param polling_duration - an instance of java.lang.Long that represents how long to wait for
+	 * the element in milliseconds
+	 * @return - returns nothing (void)
+	 * @throws org.openqa.selenium.interactions.MoveTargetOutOfBoundsException if the element is not in
+	 * the viewport (when running Actions(driver).moveToElement(target_element).click().perform();)
+	 * */
+	public static void tryClickingElement(
+		final By locator, WebDriver driver, int timeout_duration, long polling_duration
+	) {
+		try {
+			WebElement element_in_question = WebElementOperations.fluentWait(locator, driver, timeout_duration, polling_duration);
+			element_in_question.click();
+		} catch (Throwable err) {
+			boolean element_still_there = WebElementOperations.elementExists(
+				locator, driver, timeout_duration, polling_duration
+			);
+			if (element_still_there) {
+				WebElement target_element = WebElementOperations.fluentWait(
+					locator, driver, timeout_duration, polling_duration
+				);
+				try {
+					new Actions(driver).moveToElement(target_element).click().perform();
+				} catch (Throwable second_err) {
+					throw second_err;
+				}
+			}
+		}
+	}
+
+
+}

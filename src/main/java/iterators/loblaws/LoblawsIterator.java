@@ -143,221 +143,6 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 
 
 	/**
-	 * pauseThenClick: a private helper method that moves the mouse over an element (passed in), pauses
-	 * for a duration of milliseconds (passed in parameter), and then clicks the element
-	 * - it first scrolls the element into view using the org.openqa.selenium.JavascriptExecutor class
-	 *   via the executeScript method (necessary if the element is not currently in the viewport)
-	 * @param element - the element you want to hover and click on (is an instance of
-	 * org.openqa.selenium.WebElement)
-	 * @param pause_timeout - an integer representing the number of milliseconds to pause
-	 * (using Duration.ofMillis)
-	 * @return - returns nothing (void)
-	 * */
-	private void pauseThenClick(WebElement element, int pause_timeout) {
-		JavascriptExecutor js = (JavascriptExecutor) this.driver;
-		js.executeScript("arguments[0].scrollIntoView(false);", element);
-		try{
-			new Actions(this.driver)
-				.moveToElement(element)
-				.pause(Duration.ofMillis(pause_timeout))
-				.click().perform();
-		} catch (org.openqa.selenium.interactions.MoveTargetOutOfBoundsException e) {
-			js.executeScript("arguments[0].scrollIntoView(true);", element);
-			new Actions(this.driver)
-				.moveToElement(element)
-				.pause(Duration.ofMillis(pause_timeout))
-				.click().perform();
-		}
-	}
-
-
-	/**
-	 * pauseThenClickThenPause: a private helper method that moves the mouse over an element (passed in),
-	 * pauses for a duration of milliseconds (passed in parameter), and then clicks the element
-	 * - it first scrolls the element into view using the org.openqa.selenium.JavascriptExecutor class
-	 *   via the executeScript method (necessary if the element is not currently in the viewport)
-	 * @param element - the element you want to hover and click on (is an instance of
-	 * org.openqa.selenium.WebElement)
-	 * @param pause_timeout - an integer representing the number of milliseconds to pause
-	 * (using Duration.ofMillis)
-	 * @param post_click_timeout - an integer representing the number of milliseconds to pause
-	 * (using Duration.ofMillis) after clicking the element
-	 * @return - returns nothing (void)
-	 * */
-	private void pauseThenClickThenPause(WebElement element, int pause_timeout, int post_click_timeout) {
-		JavascriptExecutor js = (JavascriptExecutor) this.driver;
-		js.executeScript("arguments[0].scrollIntoView(false);", element);
-		new Actions(this.driver)
-			.moveToElement(element)
-			.pause(Duration.ofMillis(pause_timeout))
-			.click()
-			.pause(Duration.ofMillis(post_click_timeout))
-			.perform();
-	}
-
-
-	/**
-	 * fluentWait - a private helper method that waits for an element to be available, and then returns
-	 * a reference to the element
-	 * The code was taken from the below stackoverflow link:
-	 * https://stackoverflow.com/questions/12858972/how-can-i-ask-the-selenium-webdriver-to-wait-for-few-seconds-in-java
-	 * @param locator - the locator that you will use to locate the element (this is an instance of
-	 * org.openqa.selenium.By)
-	 * @param driver - an instance of org.openqa.selenium.WebDriver representing a reference to the
-	 * webdriver used
-	 * @param timeout_duration - an integer that represents how long to wait for the element in seconds
-	 * @param polling_duration - an instance of java.lang.Long that represents how long to wait for
-	 * the element in milliseconds
-	 * @return an instance of the web element that you are looking to find with the locator parameter
-	 * @throws org.openqa.selenium.NoSuchElementException (throws this exception if the element is not
-	 * found in timeout_duration number of seconds)
-	 * */
-	private WebElement fluentWait(final By locator, WebDriver driver, int timeout_duration, long polling_duration) {
-		Wait<WebDriver> wait = new FluentWait<WebDriver>(driver)
-		    .withTimeout(Duration.ofSeconds(timeout_duration))
-		    .pollingEvery(Duration.ofMillis(polling_duration))
-		    .ignoring(NoSuchElementException.class);
-		WebElement foo = wait.until(new Function<WebDriver, WebElement>() {
-			public WebElement apply(WebDriver driver) {
-			    return driver.findElement(locator);
-			}
-		});
-		return foo;
-	};
-
-
-	/**
-	 * fluentWaitTillVisibleandClickable - a private helper method that waits for an element to be
-	 * present in the Document Object Model of an HTML page as well as visible (visible on the page
-	 * and having a height and width being greater than 0), then returning a reference to the element
-	 * The code was taken from the below stackoverflow link:
-	 * https://stackoverflow.com/questions/12858972/how-can-i-ask-the-selenium-webdriver-to-wait-for-few-seconds-in-java
-	 * @param locator - the locator that you will use to locate the element (this is an instance of
-	 * org.openqa.selenium.By)
-	 * @param driver - an instance of org.openqa.selenium.WebDriver representing a reference to the
-	 * webdriver used
-	 * @param timeout_duration - an integer that represents how long to wait for the element in seconds
-	 * @param polling_duration - an instance of java.lang.Long that represents how long to wait for
-	 * the element in milliseconds
-	 * @return an instance of the web element that you are looking to find with the locator parameter
-	 * @throws org.openqa.selenium.NoSuchElementException (throws this exception if the element is not
-	 * found in timeout_duration number of seconds)
-	 * */
-	private WebElement fluentWaitTillVisibleandClickable(final By locator, WebDriver driver, int timeout_duration, long polling_duration) {
-		WebDriverWait wait = new WebDriverWait(
-			driver, Duration.ofSeconds(timeout_duration), Duration.ofMillis(polling_duration)
-		);
-		wait.until(ExpectedConditions.and(
-			ExpectedConditions.presenceOfElementLocated(locator),
-			ExpectedConditions.visibilityOfElementLocated(locator)
-		));
-		WebElement element_in_question = driver.findElement(locator);
-		return element_in_question;
-	}
-
-
-	/**
-	 * elementExists - a private helper method that waits for an element to be available, and then
-	 * returns true if the element is found within the given timeout duration, returns false otherwise
-	 * @param locator - the locator that you will use to locate the element (this is an instance of
-	 * org.openqa.selenium.By)
-	 * @param driver - an instance of org.openqa.selenium.WebDriver representing a reference to the
-	 * webdriver used
-	 * @param timeout_duration - an integer that represents how long to wait for the element in seconds
-	 * @param polling_duration - an instance of java.lang.Long that represents how long to wait for
-	 * the element in milliseconds
-	 * @return true if the element was found, false otherwise
-	 * */
-	private boolean elementExists(final By locator, WebDriver driver, int timeout_duration, long polling_duration) {
-		try {
-			WebElement element_to_find = this.fluentWait(
-				locator, driver, timeout_duration, polling_duration
-			);
-			if (element_to_find != null) {
-				return true;
-			} else {
-				return false;
-			}
-		} catch (Throwable err) {
-			return false;
-		}
-	}
-
-
-	/**
-	 * elementExistsAndIsInteractable - a private helper method that waits for an element to be
-	 * present in the Document Object Model of an HTML page as well as visible (visible on the page
-	 * and having a height and width being greater than 0)
-	 * - then returns true if the element is found within the given time out duration
-	 *   (returns false otherwise)
-	 * @param locator - the locator that you will use to locate the element (this is an instance of
-	 * org.openqa.selenium.By)
-	 * @param driver - an instance of org.openqa.selenium.WebDriver representing a reference to the
-	 * webdriver used
-	 * @param timeout_duration - an integer that represents how long to wait for the element in seconds
-	 * @param polling_duration - an instance of java.lang.Long that represents how long to wait for
-	 * the element in milliseconds
-	 * @return true if the element was found, false otherwise
-	 * */
-	private boolean elementExistsAndIsInteractable(final By locator, WebDriver driver, int timeout_duration, long polling_duration) {
-		try {
-			WebElement element_to_find = this.fluentWaitTillVisibleandClickable(
-				locator, driver, timeout_duration, polling_duration
-			);
-			if (element_to_find != null) {
-				return true;
-			} else {
-				return false;
-			}
-		} catch (Throwable err) {
-			return false;
-		}
-	}
-
-
-	/**
-	 * tryClickingElement - a private method to try and click an element you wish to find with
-	 * the locator parameter as the locator
-	 * - It will first try to find and then click the element, and if an error is thrown it checks if
-	 *   the element is there
-	 * - If the element is not there, then do nothing, otherwise get the element and try to click on it
-	 *   using an ActionChain (throw the error if this fails)
-	 * @param locator - the locator that you will use to locate the element (this is an instance of
-	 * org.openqa.selenium.By)
-	 * @param driver - an instance of org.openqa.selenium.WebDriver representing a reference to the
-	 * webdriver used
-	 * @param timeout_duration - an integer that represents how long to wait for the element in seconds
-	 * @param polling_duration - an instance of java.lang.Long that represents how long to wait for
-	 * the element in milliseconds
-	 * @return - returns nothing (void)
-	 * @throws org.openqa.selenium.interactions.MoveTargetOutOfBoundsException if the element is not in
-	 * the viewport (when running Actions(driver).moveToElement(target_element).click().perform();)
-	 * */
-	private void tryClickingElement(
-		final By locator, WebDriver driver, int timeout_duration, long polling_duration
-	) {
-		try {
-			WebElement element_in_question = this.fluentWait(locator, driver, timeout_duration, polling_duration);
-			element_in_question.click();
-		} catch (Throwable err) {
-			boolean element_still_there = this.elementExists(
-				locator, driver, timeout_duration, polling_duration
-			);
-			if (element_still_there) {
-				WebElement target_element = this.fluentWait(
-					locator, driver, timeout_duration, polling_duration
-				);
-				try {
-					new Actions(driver).moveToElement(target_element).click().perform();
-				} catch (Throwable second_err) {
-					throw second_err;
-				}
-			}
-		}
-	}
-
-
-	/**
 	 * citiesFileExists - a private helper method that determines if the xml file storing townships exists,
 	 * and returns true if this file exists
 	 * @return - returns true if the file exists, returns false otherwise
@@ -417,20 +202,20 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		String second_privacy_policy_selector = this.configurations.getProperty(
 			"second_privacy_policy_selector"
 		);
-		boolean first_privacy_policy_button_exists = this.elementExists(
+		boolean first_privacy_policy_button_exists = WebElementOperations.elementExists(
 			new By.ByCssSelector(privacy_policy_selector), this.driver, 60, 1000L
 		);
-		boolean second_privacy_policy_button_exists = this.elementExists(
+		boolean second_privacy_policy_button_exists = WebElementOperations.elementExists(
 			new By.ByCssSelector(second_privacy_policy_selector), this.driver, 20, 500L
 		);
 		if (first_privacy_policy_button_exists) {
-			WebElement privacy_policy_close_button = this.fluentWait(
+			WebElement privacy_policy_close_button = WebElementOperations.fluentWait(
 				new By.ByCssSelector(privacy_policy_selector), this.driver, 30, 1000L
 			);
 			privacy_policy_close_button.click();
 		}
 		if (second_privacy_policy_button_exists) {
-			WebElement second_privacy_policy_close_button = this.fluentWait(
+			WebElement second_privacy_policy_close_button = WebElementOperations.fluentWait(
 				new By.ByCssSelector(second_privacy_policy_selector), this.driver, 30, 1000L
 			);
 			second_privacy_policy_close_button.click();
@@ -458,15 +243,15 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		);
 		String location_button_selector = this.configurations.getProperty("location_button");
 		String change_location_selector = this.configurations.getProperty("change_location_button");
-		WebElement location_button = this.fluentWait(
+		WebElement location_button = WebElementOperations.fluentWait(
 			new By.ByCssSelector(location_button_selector), this.driver, 30, 1000L
 		);
 		location_button.click();
-		WebElement change_location_button = this.fluentWait(
+		WebElement change_location_button = WebElementOperations.fluentWait(
 			new By.ByCssSelector(change_location_selector), this.driver, 30, 1000L
 		);
 		change_location_button.click();
-		WebElement location_input = this.fluentWait(
+		WebElement location_input = WebElementOperations.fluentWait(
 			new By.ByCssSelector(this.configurations.getProperty("location_input_field")),
 			this.driver, 30, 1000L
 		);
@@ -489,11 +274,11 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 			this.removePrivacyPolicyButon();
 		}
 		while (
-			this.elementExists(
+			WebElementOperations.elementExists(
 				new By.ByCssSelector(store_info_container_selector.toString()), this.driver, 30, 500L
 			)
 		) {
-			WebElement store_info_container = this.fluentWait(
+			WebElement store_info_container = WebElementOperations.fluentWait(
 				new By.ByCssSelector(store_info_container_selector.toString()), this.driver, 30, 500L
 			);
 			WebElement store_info_location_text = store_info_container.findElement(
@@ -661,7 +446,7 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		By price_unit_locator = new By.ByCssSelector(price_unit_selector);
 		By comparison_price_value_locator = new By.ByCssSelector(comparison_price_value_selector);
 		By comparison_price_unit_locator = new By.ByCssSelector(comparison_price_unit_selector);
-		WebElement product_info_link = this.fluentWait(
+		WebElement product_info_link = WebElementOperations.fluentWait(
 			product_info_link_locator, this.driver, 10, 100L
 		);
 		String href_address = product_info_link.getAttribute("href");
@@ -669,19 +454,21 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		driver.switchTo().newWindow(WindowType.TAB);
 		driver.get(href_address);
 		try {
-			WebElement product_name = this.fluentWait(product_name_locator, this.driver, 30, 100L);
-			WebElement price_value = this.fluentWait(price_value_locator, this.driver, 30, 100L);
-			WebElement price_unit = this.fluentWait(price_unit_locator, this.driver, 30, 100L);
+			WebElement product_name = WebElementOperations.fluentWait(
+				product_name_locator, this.driver, 30, 100L
+			);
+			WebElement price_value = WebElementOperations.fluentWait(price_value_locator, this.driver, 30, 100L);
+			WebElement price_unit = WebElementOperations.fluentWait(price_unit_locator, this.driver, 30, 100L);
 			String price_info = price_value.getText() + " " + price_unit.getText();
 			product_info.put("product_name", product_name.getText());
 			product_info.put("price_info", price_info);
 			product_info.put("township_location", township);
-			boolean brand_name_exists = this.elementExists(brand_name_locator, this.driver, 1, 100L);
-			boolean package_size_exists = this.elementExists(package_size_locator, this.driver, 1, 100L);
-			boolean comparison_price_value_exists = this.elementExists(
+			boolean brand_name_exists = WebElementOperations.elementExists(brand_name_locator, this.driver, 1, 100L);
+			boolean package_size_exists = WebElementOperations.elementExists(package_size_locator, this.driver, 1, 100L);
+			boolean comparison_price_value_exists = WebElementOperations.elementExists(
 				comparison_price_value_locator, this.driver, 2, 100L
 			);
-			boolean comparison_price_unit_exists = this.elementExists(
+			boolean comparison_price_unit_exists = WebElementOperations.elementExists(
 				comparison_price_unit_locator, this.driver, 2, 100L
 			);
 			if (brand_name_exists) {
@@ -693,10 +480,10 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 				product_info.put("package_size", package_size_info.getText());
 			}
 			if (comparison_price_value_exists && comparison_price_unit_exists) {
-				WebElement comparison_price_value = this.fluentWait(
+				WebElement comparison_price_value = WebElementOperations.fluentWait(
 					comparison_price_value_locator, this.driver, 5, 100L
 				);
-				WebElement comparison_price_unit = this.fluentWait(
+				WebElement comparison_price_unit = WebElementOperations.fluentWait(
 					comparison_price_unit_locator, this.driver, 5, 100L
 				);
 				String comparison_unit_price = comparison_price_value.getText() + " "
@@ -784,12 +571,12 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		WebElement product_parent_container;
 		while (next_button_interactable) {
 			if (at_bottom) {
-				WebElement next_button = this.fluentWait(
+				WebElement next_button = WebElementOperations.fluentWait(
 					next_button_locator, this.driver, 5, 250L
 				);
 				// Below javascript code from: https://stackoverflow.com/questions/42982950/how-to-scroll-down-the-page-till-bottomend-page-in-the-selenium-webdriver
 				js.executeScript("window.scrollTo(0, document.body.scrollHeight);");
-				this.pauseThenClick(next_button, 500);
+				WebElementOperations.pauseThenClick(next_button, 500, this.driver);
 				product_parent_container_selector = SelectorOperations.changeSelectorDigit(
 					product_parent_container_selector, 1
 				);
@@ -800,8 +587,8 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 					product_parent_container_selector.toString()
 				);
 			}
-			while (this.elementExists(product_parent_container_locator, this.driver, 10, 500L)) {
-				product_parent_container = this.fluentWait(
+			while (WebElementOperations.elementExists(product_parent_container_locator, this.driver, 10, 500L)) {
+				product_parent_container = WebElementOperations.fluentWait(
 					product_parent_container_locator, this.driver, 5, 250L
 				);
 				js.executeScript("arguments[0].scrollIntoView(true);", product_parent_container);
@@ -817,12 +604,12 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 					product_parent_container_selector.toString()
 				);
 			}
-			pagination_exists = this.elementExists(pagination_locator, this.driver, 5, 250L);
+			pagination_exists = WebElementOperations.elementExists(pagination_locator, this.driver, 5, 250L);
 			if (!pagination_exists) {
 				next_button_interactable = false;
 				continue;
 			}
-			WebElement next_items_button = this.fluentWait(
+			WebElement next_items_button = WebElementOperations.fluentWait(
 				next_button_locator, this.driver, 5, 250L
 			);
 			next_button_disabled = next_items_button.getAttribute("disabled");
@@ -847,11 +634,11 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 	private void changeLocation(String township) {
 		String location_button_selector = this.configurations.getProperty("location_button");
 		String change_location_button_text = this.configurations.getProperty("change_location_button_text");
-		this.tryClickingElement(new By.ByCssSelector(location_button_selector), this.driver, 30, 1000L);
-		this.tryClickingElement(
+		WebElementOperations.tryClickingElement(new By.ByCssSelector(location_button_selector), this.driver, 30, 1000L);
+		WebElementOperations.tryClickingElement(
 			new By.ByPartialLinkText(change_location_button_text), this.driver, 30, 1000L
 		);
-		WebElement location_input = this.fluentWait(
+		WebElement location_input = WebElementOperations.fluentWait(
 			new By.ByCssSelector(this.configurations.getProperty("location_input_field")),
 			this.driver, 30, 1000L
 		);
@@ -864,22 +651,22 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 			.pause(Duration.ofMillis(500))
 			.perform();
 		String browse_location_button_selector = this.configurations.getProperty("browse_location_button_selector");
-		this.tryClickingElement(
+		WebElementOperations.tryClickingElement(
 			new By.ByCssSelector(browse_location_button_selector), this.driver, 30, 1000L
 		);
 		try {
-			boolean location_confirmed_text_exists = this.elementExists(
+			boolean location_confirmed_text_exists = WebElementOperations.elementExists(
 				new By.ByCssSelector(this.configurations.getProperty("location_confirmed_heading_selector")),
 				this.driver, 30, 500L
 			);
 			if (location_confirmed_text_exists) {
-				this.tryClickingElement(
+				WebElementOperations.tryClickingElement(
 					new By.ByCssSelector(this.configurations.getProperty("close_location_confirmation_popup_selector")),
 					this.driver, 30, 500L
 				);
 			}
 		} catch (Exception err) {
-			boolean location_confirmed = this.elementExists(
+			boolean location_confirmed = WebElementOperations.elementExists(
 				new By.ByCssSelector(
 					this.configurations.getProperty("location_confirmed_heading_selector")
 				),
@@ -909,11 +696,11 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 			this.configurations.getProperty("main_menu_item_selector")
 		);
 		main_menu_item_locator = new By.ByCssSelector(main_menu_item_selector.toString());
-		main_menu_item_exists = this.elementExists(
+		main_menu_item_exists = WebElementOperations.elementExists(
 			main_menu_item_locator, this.driver, 5, 100L
 		);
 		while (main_menu_item_exists) {
-			main_menu_item = this.fluentWait(main_menu_item_locator, this.driver, 5, 500L);
+			main_menu_item = WebElementOperations.fluentWait(main_menu_item_locator, this.driver, 5, 500L);
 			main_menu_item_to_ignore = this.menuItemToBeIgnored(main_menu_item);
 			if (!main_menu_item_to_ignore) {
 				String main_menu_item_text = main_menu_item.getText();
@@ -921,7 +708,7 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 			}
 			main_menu_item_selector = SelectorOperations.incrementSelectorDigit(main_menu_item_selector);
 			main_menu_item_locator = new By.ByCssSelector(main_menu_item_selector.toString());
-			main_menu_item_exists = this.elementExists(
+			main_menu_item_exists = WebElementOperations.elementExists(
 				main_menu_item_locator, this.driver, 5, 100L
 			);
 		}
@@ -944,12 +731,12 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		WebElement submenu_item;
 		int submenu_li_child_index;
 		submenu_item_locator = new By.ByCssSelector(submenu_item_selector.toString());
-		submenu_item_exists = this.elementExists(
+		submenu_item_exists = WebElementOperations.elementExists(
 			submenu_item_locator, this.driver, 5, 100L
 		);
 		submenu_li_child_index = this.getNumFromConfigurationsFile("starting_index_for_submenu_item");
 		while (submenu_item_exists) {
-			submenu_item = this.fluentWait(submenu_item_locator, this.driver, 5, 500L);
+			submenu_item = WebElementOperations.fluentWait(submenu_item_locator, this.driver, 5, 500L);
 			submenu_item_to_ignore = this.submenuItemToBeIgnored(
 				submenu_item, submenu_item_selector.toString()
 			);
@@ -961,7 +748,7 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 				submenu_item_selector, submenu_li_child_index
 			);
 			submenu_item_locator = new By.ByCssSelector(submenu_item_selector.toString());
-			submenu_item_exists = this.elementExists(
+			submenu_item_exists = WebElementOperations.elementExists(
 				submenu_item_locator, this.driver, 5, 100L
 			);
 		}
@@ -1065,7 +852,7 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		if (!this.privacy_policy_button_removed) {
 			this.removePrivacyPolicyButon();
 		}
-		main_menu_item_exists = this.elementExistsAndIsInteractable(
+		main_menu_item_exists = WebElementOperations.elementExistsAndIsInteractable(
 			main_menu_item_locator, this.driver, 5, 100L
 		);
 		if (this.timeLimitExists()) {
@@ -1079,7 +866,7 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		}
 		while (main_menu_item_exists) {
 			this.startTimer();
-			main_menu_item = this.fluentWait(main_menu_item_locator, this.driver, 30, 1000L);
+			main_menu_item = WebElementOperations.fluentWait(main_menu_item_locator, this.driver, 30, 1000L);
 			main_menu_text = main_menu_item.getText();
 			main_menu_item_to_ignore = this.menuItemToBeIgnored(main_menu_item);
 			main_menu_item_to_ignore = (
@@ -1097,7 +884,7 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 				);
 				main_menu_item_selector = SelectorOperations.incrementSelectorDigit(main_menu_item_selector);
 				main_menu_item_locator = new By.ByCssSelector(main_menu_item_selector.toString());
-				main_menu_item_exists = this.elementExistsAndIsInteractable(
+				main_menu_item_exists = WebElementOperations.elementExistsAndIsInteractable(
 					main_menu_item_locator, this.driver, 5, 100L
 				);
 				continue;
@@ -1105,7 +892,7 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 			new Actions(this.driver)
 				.moveToElement(main_menu_item)
 				.pause(Duration.ofMillis(200)).click().perform();
-			submenu_item_exists = this.elementExistsAndIsInteractable(
+			submenu_item_exists = WebElementOperations.elementExistsAndIsInteractable(
 				submenu_item_locator, this.driver, 30, 100L
 			);
 			if (this.timeLimitExists()) {
@@ -1120,7 +907,7 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 				}
 			}
 			while (submenu_item_exists) {
-				WebElement submenu_item = this.fluentWait(submenu_item_locator, this.driver, 30, 1000L);
+				WebElement submenu_item = WebElementOperations.fluentWait(submenu_item_locator, this.driver, 30, 1000L);
 				submenu_text = submenu_item.getText();
 				submenu_item_to_ignore = this.submenuItemToBeIgnored(
 					submenu_item, submenu_item_selector_in_main_menu.toString()
@@ -1130,7 +917,7 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 					(this.subcategories_left.indexOf(submenu_text) == -1)
 				);
 				if (!submenu_item_to_ignore) {
-					this.pauseThenClick(submenu_item, 200);
+					WebElementOperations.pauseThenClick(submenu_item, 200, this.driver);
 					StringBuilder item_under_second_submenu_selector = new StringBuilder(
 						this.configurations.getProperty("item_under_second_submenu")
 					);
@@ -1145,24 +932,30 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 					);
 					By see_all_link_locator = new By.ByCssSelector(see_all_link_selector.toString());
 					By parent_level_button_locator = new By.ByCssSelector(parent_level_button_selector);
-					boolean element_exists = this.elementExists(
+					boolean element_exists = WebElementOperations.elementExists(
 						current_submenu_locator, this.driver, 10, 1000L
 					);
 					while (element_exists) {
-						WebElement current_submenu_button = this.fluentWait(
+						WebElement current_submenu_button = WebElementOperations.fluentWait(
 							current_submenu_locator, this.driver, 10, 1000L
 						);
-						this.pauseThenClickThenPause(current_submenu_button, 200, 200);
-						WebElement see_all_button = this.fluentWaitTillVisibleandClickable(
+						WebElementOperations.pauseThenClickThenPause(
+							current_submenu_button, 200, 200, this.driver
+						);
+						WebElement see_all_button = WebElementOperations.fluentWaitTillVisibleandClickable(
 							see_all_link_locator, this.driver, 30, 1000L
 						);
-						this.pauseThenClickThenPause(see_all_button, 200, 300);
+						WebElementOperations.pauseThenClickThenPause(
+							see_all_button, 200, 300, this.driver
+						);
 						this.scrapeAllPrices(township);
 						js.executeScript("window.scrollTo(0, 0);");
-						WebElement parent_menu_button = this.fluentWait(
+						WebElement parent_menu_button = WebElementOperations.fluentWait(
 							parent_level_button_locator,this.driver, 30, 1000L
 						);
-						this.pauseThenClickThenPause(parent_menu_button, 200, 300);
+						WebElementOperations.pauseThenClickThenPause(
+							parent_menu_button, 200, 300, this.driver
+						);
 						item_under_second_submenu_selector = SelectorOperations.incrementSelectorDigit(
 							item_under_second_submenu_selector, index_after_brackets
 						);
@@ -1173,7 +966,7 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 							item_under_second_submenu_selector.toString()
 						);
 						see_all_link_locator = new By.ByCssSelector(see_all_link_selector.toString());
-						element_exists = this.elementExists(
+						element_exists = WebElementOperations.elementExists(
 							current_submenu_locator, this.driver, 10, 1000L
 						);
 					}
@@ -1197,8 +990,8 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 				);
 				submenu_item_locator = new By.ByCssSelector(submenu_item_selector_in_main_menu.toString());
 				js.executeScript("window.scrollTo(0, 0);");
-				this.pauseThenClick(main_menu_item, 200);
-				submenu_item_exists = this.elementExistsAndIsInteractable(submenu_item_locator, this.driver, 30, 100L);
+				WebElementOperations.pauseThenClick(main_menu_item, 200, this.driver);
+				submenu_item_exists = WebElementOperations.elementExistsAndIsInteractable(submenu_item_locator, this.driver, 30, 100L);
 			}
 			submenu_item_selector_in_main_menu = SelectorOperations.incrementSelectorDigit(
 				submenu_item_selector_in_main_menu
@@ -1222,7 +1015,7 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 			}
 			main_menu_item_selector = SelectorOperations.incrementSelectorDigit(main_menu_item_selector);
 			main_menu_item_locator = new By.ByCssSelector(main_menu_item_selector.toString());
-			main_menu_item_exists = this.elementExistsAndIsInteractable(main_menu_item_locator, this.driver, 5, 100L);
+			main_menu_item_exists = WebElementOperations.elementExistsAndIsInteractable(main_menu_item_locator, this.driver, 5, 100L);
 		}
 		this.driver.get(this.configurations.getProperty("url"));
 	}
