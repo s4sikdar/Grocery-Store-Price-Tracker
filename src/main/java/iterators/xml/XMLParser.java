@@ -80,6 +80,7 @@ public class XMLParser {
 		"-[A-Za-z][A-Za-z][A-Za-z]-[0-9][0-9]-[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]" +
 		"." + prefix_and_suffix[1];
 		this.matched_xml_filenames = new ArrayList<String>();
+		this.event_reader_opened = false;
 	}
 
 
@@ -186,24 +187,26 @@ public class XMLParser {
 	 */
 	private void openProductXmlInputStream() {
 		boolean file_already_exists;
-		String currentPath = System.getProperty("user.dir");
-		Path pwd = Paths.get(currentPath);
-		try {
-			ArrayList<String> files_in_pwd = this.listSourceFiles(pwd);
-			this.matched_xml_filenames = files_in_pwd;
-			this.current_input_xml_filename = this.matched_xml_filenames.get(0);
-			this.matched_xml_filenames.remove(0);
-			Path xml_path = pwd.resolve(this.current_input_xml_filename);
-			XMLInputFactory xml_input_factory = XMLInputFactory.newInstance();
-			File xml_file = new File(xml_path.toString());
-			file_already_exists = xml_file.exists();
-			this.xml_istream = new FileInputStream(xml_file);
-			this.xml_event_reader = xml_input_factory.createXMLEventReader(this.xml_istream);
-			this.xml_event_factory = XMLEventFactory.newInstance();
-		} catch (Throwable t) {
-			t.printStackTrace();
+		if (!this.event_reader_opened) {
+			String currentPath = System.getProperty("user.dir");
+			Path pwd = Paths.get(currentPath);
+			try {
+				ArrayList<String> files_in_pwd = this.listSourceFiles(pwd);
+				this.matched_xml_filenames = files_in_pwd;
+				this.current_input_xml_filename = this.matched_xml_filenames.get(0);
+				this.matched_xml_filenames.remove(0);
+				Path xml_path = pwd.resolve(this.current_input_xml_filename);
+				XMLInputFactory xml_input_factory = XMLInputFactory.newInstance();
+				File xml_file = new File(xml_path.toString());
+				file_already_exists = xml_file.exists();
+				this.xml_istream = new FileInputStream(xml_file);
+				this.xml_event_reader = xml_input_factory.createXMLEventReader(this.xml_istream);
+				this.xml_event_factory = XMLEventFactory.newInstance();
+			} catch (Throwable t) {
+				t.printStackTrace();
+			}
+			this.event_reader_opened = true;
 		}
-		this.event_reader_opened = true;
 	}
 
 

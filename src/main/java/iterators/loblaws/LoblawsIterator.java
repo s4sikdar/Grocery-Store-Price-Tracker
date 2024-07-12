@@ -22,6 +22,7 @@ import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.ElementNotInteractableException;
 import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.PageLoadStrategy;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.firefox.FirefoxDriver;
@@ -202,11 +203,17 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		String second_privacy_policy_selector = this.configurations.getProperty(
 			"second_privacy_policy_selector"
 		);
-		boolean first_privacy_policy_button_exists = WebElementOperations.elementExists(
-			new By.ByCssSelector(privacy_policy_selector), this.driver, 60, 1000L
+		//boolean first_privacy_policy_button_exists = WebElementOperations.elementExists(
+		//	new By.ByCssSelector(privacy_policy_selector), this.driver, 60, 1000L
+		//);
+		boolean first_privacy_policy_button_exists = WebElementOperations.elementExistsByJavaScript(
+			this.driver, privacy_policy_selector
 		);
-		boolean second_privacy_policy_button_exists = WebElementOperations.elementExists(
-			new By.ByCssSelector(second_privacy_policy_selector), this.driver, 20, 500L
+		//boolean second_privacy_policy_button_exists = WebElementOperations.elementExists(
+		//	new By.ByCssSelector(second_privacy_policy_selector), this.driver, 20, 500L
+		//);
+		boolean second_privacy_policy_button_exists = WebElementOperations.elementExistsByJavaScript(
+			this.driver, second_privacy_policy_selector
 		);
 		if (first_privacy_policy_button_exists) {
 			WebElement privacy_policy_close_button = WebElementOperations.fluentWait(
@@ -273,11 +280,10 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		if (!this.privacy_policy_button_removed) {
 			this.removePrivacyPolicyButon();
 		}
-		while (
-			WebElementOperations.elementExists(
-				new By.ByCssSelector(store_info_container_selector.toString()), this.driver, 30, 500L
-			)
-		) {
+		boolean store_info_container_exists = WebElementOperations.elementExists(
+			new By.ByCssSelector(store_info_container_selector.toString()), this.driver, 30, 500L
+		);
+		while (store_info_container_exists) {
 			WebElement store_info_container = WebElementOperations.fluentWait(
 				new By.ByCssSelector(store_info_container_selector.toString()), this.driver, 30, 500L
 			);
@@ -311,6 +317,9 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 					cities_file_xml_stream.createXMLNode(city_tag_name, city_province_combination);
 				}
 			}
+			store_info_container_exists = WebElementOperations.elementExistsByJavaScript(
+				this.driver, store_info_container_selector.toString()
+			);
 		}
 		if (this.timeLimitExists()) {
 			cities_file_xml_stream.closeProductXmlOutputStream();
@@ -455,7 +464,7 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		driver.get(href_address);
 		try {
 			WebElement product_name = WebElementOperations.fluentWait(
-				product_name_locator, this.driver, 30, 100L
+				product_name_locator, this.driver, 40, 100L
 			);
 			WebElement price_value = WebElementOperations.fluentWait(price_value_locator, this.driver, 30, 100L);
 			WebElement price_unit = WebElementOperations.fluentWait(price_unit_locator, this.driver, 30, 100L);
@@ -463,13 +472,25 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 			product_info.put("product_name", product_name.getText());
 			product_info.put("price_info", price_info);
 			product_info.put("township_location", township);
-			boolean brand_name_exists = WebElementOperations.elementExists(brand_name_locator, this.driver, 1, 100L);
-			boolean package_size_exists = WebElementOperations.elementExists(package_size_locator, this.driver, 1, 100L);
-			boolean comparison_price_value_exists = WebElementOperations.elementExists(
-				comparison_price_value_locator, this.driver, 2, 100L
+			//boolean brand_name_exists = WebElementOperations.elementExists(brand_name_locator, this.driver, 1, 100L);
+			boolean brand_name_exists = WebElementOperations.elementExistsByJavaScript(
+				this.driver, brand_name_selector
 			);
-			boolean comparison_price_unit_exists = WebElementOperations.elementExists(
-				comparison_price_unit_locator, this.driver, 2, 100L
+			//boolean package_size_exists = WebElementOperations.elementExists(package_size_locator, this.driver, 1, 100L);
+			boolean package_size_exists = WebElementOperations.elementExistsByJavaScript(
+				this.driver, package_size_selector
+			);
+			//boolean comparison_price_value_exists = WebElementOperations.elementExists(
+			//comparison_price_value_locator, this.driver, 1, 100L
+			//);
+			boolean comparison_price_value_exists = WebElementOperations.elementExistsByJavaScript(
+				this.driver, comparison_price_value_selector
+			);
+			//boolean comparison_price_unit_exists = WebElementOperations.elementExists(
+			//	comparison_price_unit_locator, this.driver, 1, 100L
+			//);
+			boolean comparison_price_unit_exists = WebElementOperations.elementExistsByJavaScript(
+				this.driver, comparison_price_unit_selector
 			);
 			if (brand_name_exists) {
 				WebElement brand_name = this.driver.findElement(brand_name_locator);
@@ -547,6 +568,7 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 	 * @return - returns nothing (void)
 	 */
 	private void scrapeAllPrices(String city) throws XMLStreamException {
+		boolean parent_container_exists;
 		StringBuilder product_info_link_selector = new StringBuilder(
 			this.configurations.getProperty("product_separate_page_link_selector")
 		);
@@ -587,7 +609,13 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 					product_parent_container_selector.toString()
 				);
 			}
-			while (WebElementOperations.elementExists(product_parent_container_locator, this.driver, 10, 500L)) {
+			parent_container_exists = WebElementOperations.elementExists(
+				product_parent_container_locator, this.driver, 10, 500L
+			);
+			while (parent_container_exists) {
+			//while (WebElementOperations.elementExistsByJavaScript(
+			//	this.driver, product_parent_container_selector.toString()
+			//)) {
 				product_parent_container = WebElementOperations.fluentWait(
 					product_parent_container_locator, this.driver, 5, 250L
 				);
@@ -603,8 +631,12 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 				product_parent_container_locator = new By.ByCssSelector(
 					product_parent_container_selector.toString()
 				);
+				parent_container_exists = WebElementOperations.elementExistsByJavaScript(
+					this.driver, product_parent_container_selector.toString()
+				);
 			}
-			pagination_exists = WebElementOperations.elementExists(pagination_locator, this.driver, 5, 250L);
+			//pagination_exists = WebElementOperations.elementExists(pagination_locator, this.driver, 5, 250L);
+			pagination_exists = WebElementOperations.elementExistsByJavaScript(this.driver, pagination_selector);
 			if (!pagination_exists) {
 				next_button_interactable = false;
 				continue;
@@ -699,6 +731,9 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		main_menu_item_exists = WebElementOperations.elementExists(
 			main_menu_item_locator, this.driver, 5, 100L
 		);
+		//main_menu_item_exists = WebElementOperations.elementExistsByJavaScript(
+		//	this.driver, main_menu_item_selector.toString()
+		//);
 		while (main_menu_item_exists) {
 			main_menu_item = WebElementOperations.fluentWait(main_menu_item_locator, this.driver, 5, 500L);
 			main_menu_item_to_ignore = this.menuItemToBeIgnored(main_menu_item);
@@ -708,8 +743,11 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 			}
 			main_menu_item_selector = SelectorOperations.incrementSelectorDigit(main_menu_item_selector);
 			main_menu_item_locator = new By.ByCssSelector(main_menu_item_selector.toString());
-			main_menu_item_exists = WebElementOperations.elementExists(
-				main_menu_item_locator, this.driver, 5, 100L
+			//main_menu_item_exists = WebElementOperations.elementExists(
+			//	main_menu_item_locator, this.driver, 5, 100L
+			//);
+			main_menu_item_exists = WebElementOperations.elementExistsByJavaScript(
+				this.driver, main_menu_item_selector.toString()
 			);
 		}
 	}
@@ -734,6 +772,9 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		submenu_item_exists = WebElementOperations.elementExists(
 			submenu_item_locator, this.driver, 5, 100L
 		);
+		//submenu_item_exists = WebElementOperations.elementExistsByJavaScript(
+		//	this.driver, submenu_item_selector.toString()
+		//);
 		submenu_li_child_index = this.getNumFromConfigurationsFile("starting_index_for_submenu_item");
 		while (submenu_item_exists) {
 			submenu_item = WebElementOperations.fluentWait(submenu_item_locator, this.driver, 5, 500L);
@@ -748,8 +789,11 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 				submenu_item_selector, submenu_li_child_index
 			);
 			submenu_item_locator = new By.ByCssSelector(submenu_item_selector.toString());
-			submenu_item_exists = WebElementOperations.elementExists(
-				submenu_item_locator, this.driver, 5, 100L
+			//submenu_item_exists = WebElementOperations.elementExists(
+			//	submenu_item_locator, this.driver, 5, 100L
+			//);
+			submenu_item_exists = WebElementOperations.elementExistsByJavaScript(
+				this.driver, submenu_item_selector.toString()
 			);
 		}
 	}
@@ -1037,6 +1081,7 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 		String city_tag_name = this.configurations.getProperty("individual_city_tag");
 		DOMParser cities_xml_dom_parser = new DOMParser(fname_for_cities_left, root_tag_name, city_tag_name);
 		// https://stackoverflow.com/questions/13959704/accepting-sharing-location-browser-popups-through-selenium-webdriver
+		options.setPageLoadStrategy(PageLoadStrategy.EAGER);
 		options.addPreference("geo.prompt.testing", true);
 		options.addPreference("geo.prompt.testing.allow", true);
 		//options.addPreference(
