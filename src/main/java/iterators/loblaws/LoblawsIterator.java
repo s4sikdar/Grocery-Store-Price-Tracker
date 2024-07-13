@@ -596,7 +596,7 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 				);
 			}
 			parent_container_exists = WebElementOperations.elementExists(
-				product_parent_container_locator, this.driver, 10, 500L
+				product_parent_container_locator, this.driver, 10, 250L
 			);
 			while (parent_container_exists) {
 				product_parent_container = WebElementOperations.fluentWait(
@@ -980,8 +980,8 @@ public class LoblawsIterator implements GroceryStorePriceScraper {
 							item_under_second_submenu_selector.toString()
 						);
 						see_all_link_locator = new By.ByCssSelector(see_all_link_selector.toString());
-						element_exists = WebElementOperations.elementExists(
-							current_submenu_locator, this.driver, 10, 1000L
+						element_exists = WebElementOperations.elementExistsByJavaScript(
+							this.driver, item_under_second_submenu_selector.toString()
 						);
 					}
 					index = this.subcategories_left.indexOf(submenu_text);
