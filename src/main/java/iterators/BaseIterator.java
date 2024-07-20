@@ -165,4 +165,20 @@ public class BaseIterator implements GroceryStorePriceScraper {
 	}
 
 
+	/**
+	 * getNumFromConfigurationsFile - a private helper method that gets a value from the properties file
+	 * based on the configuration variable to look for (specified by config_var_name)
+	 * - It then tries to cast the string value into an integer, and then returns it
+	 * - The value read in from the configuration file must be a string that represents a number (example:
+	 *   "123" or "1") or this function will throw an error when trying to parse the integer
+	 * @param config_var_name = a constant String representing the name of the variable in the properties file
+	 * to look for (the variable must be in the configuration file, or this method will likely throw an error)
+	 * @return - returns the parsed integer read in from the configuration file
+	 */
+	protected int getNumFromConfigurationsFile(final String config_var_name) {
+		String value = this.getConfigProperty(config_var_name);
+		return Integer.parseInt(value);
+	}
+
+
 }
