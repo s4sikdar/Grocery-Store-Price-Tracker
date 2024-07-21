@@ -72,6 +72,7 @@ public class MetroIterator extends BaseIterator {
 	private void setUp() {
 		this.driver = null;
 		this.subcategories_left = new ArrayList<String>();
+		this.categories_left = new ArrayList<String>();
 		this.cookies_menu_removed = false;
 	}
 
@@ -144,35 +145,42 @@ public class MetroIterator extends BaseIterator {
 	}
 
 
-	private void scrapePrices() {
-		String aisles_button_text = this.getConfigProperty("aisles_button_id_selector");
+	/**
+	 * closeSignInButton - a private method that closes the sign in window that sometimes shows up when you search for
+	 * anything using the search bar (shows up the first time at least)
+	 * @return - returns nothing (void)
+	 */
+	private void closeSignInButton() {
 		boolean element_exists = false;
-		int index = this.getNumFromConfigurationsFile("submenu_button_increment_index");
-		String submenu_name_attribute = this.getConfigProperty("submenu_attribute_with_name");
-		String close_ailes_button_selector = this.getConfigProperty("close_aisles_button_selector");
-		ArrayList<String> menu_items = new ArrayList<String>();
-		StringBuilder submenu_button_selector = new StringBuilder(this.getConfigProperty("submenu_button_selector"));
-		String search_input_selector = this.getConfigProperty("search_input_selector");
-		String larger_search_input_selector = this.getConfigProperty("larger_search_input_selector");
-		String search_button_selector = this.getConfigProperty("search_button_selector");
-		String form_selector = this.getConfigProperty("form_selector");
-		String filter_selector = this.getConfigProperty("filter_button_selector");
-		String filter_show_all_aisles_selector = this.getConfigProperty("filter_show_all_aisles_selector");
-		String filter_close_button_selector = this.getConfigProperty("filter_close_button_selector");
-		String next_items_selector = this.getConfigProperty("next_items_selector");
 		String sign_in_box_selector = this.getConfigProperty("sign_in_box_selector");
 		String close_sign_in_box_selector = this.getConfigProperty("close_sign_in_box_selector");
-		String view_all_products_link_selector = this.getConfigProperty("view_all_products_link_selector");
-		WebElement submenu_button;
-		WebElement close_aisles_button;
-		WebElement search_input;
-		WebElement larger_search_input;
-		WebElement search_button;
-		WebElement form;
-		WebElement filter_button;
-		WebElement show_all_aisles_button;
-		WebElement filter_close_button;
-		WebElement next_items_link;
+		//element_exists = WebElementOperations.elementExistsAndIsInteractable(
+		//	new By.ByCssSelector(sign_in_box_selector), this.driver, 10, 250L
+		//);
+		element_exists = WebElementOperations.elementExistsByJavaScript(this.driver, sign_in_box_selector);
+		if (element_exists) {
+			WebElement close_sign_in_button = WebElementOperations.fluentWaitTillVisibleandClickable(
+				new By.ByCssSelector(close_sign_in_box_selector), this.driver, 20, 250L
+			);
+			//WebElementOperations.pauseThenClickThenPause(close_sign_in_button, 2000, 5000, this.driver);
+			close_sign_in_button.click();
+		}
+	}
+
+
+	/**
+	 * getAllAisleCategories - a private helper method that gets all aisle categories to go through, and then puts them in
+	 * this.categories_left
+	 * @return - returns nothing (void)
+	 */
+	private void getAllAisleCategories() {
+		boolean element_exists = false;
+		int index = this.getNumFromConfigurationsFile("submenu_button_increment_index");
+		String aisles_button_text = this.getConfigProperty("aisles_button_id_selector");
+		StringBuilder submenu_button_selector = new StringBuilder(this.getConfigProperty("submenu_button_selector"));
+		String submenu_name_attribute = this.getConfigProperty("submenu_attribute_with_name");
+		String close_ailes_button_selector = this.getConfigProperty("close_aisles_button_selector");
+		WebElement submenu_button, close_aisles_button;
 		WebElement aisles_button = WebElementOperations.fluentWait(
 			new By.ByCssSelector(aisles_button_text), this.driver, 10, 500L
 		);
@@ -189,7 +197,7 @@ public class MetroIterator extends BaseIterator {
 				new By.ByCssSelector(submenu_button_selector.toString()), this.driver, 5, 250L
 			);
 			name_attribute_value = submenu_button.getAttribute(submenu_name_attribute);
-			menu_items.add(name_attribute_value);
+			this.categories_left.add(name_attribute_value);
 			submenu_button_selector = SelectorOperations.incrementSelectorDigit(submenu_button_selector, index);
 			element_exists = WebElementOperations.elementExistsByJavaScript(
 				this.driver, submenu_button_selector.toString()
@@ -200,31 +208,25 @@ public class MetroIterator extends BaseIterator {
 			new By.ByCssSelector(close_ailes_button_selector), this.driver, 5, 250L
 		);
 		close_aisles_button.click();
-		search_input = WebElementOperations.fluentWait(
-			new By.ByCssSelector(search_input_selector), this.driver, 5, 250L
-		);
-		search_input.click();
-		larger_search_input = WebElementOperations.fluentWait(
-			new By.ByCssSelector(larger_search_input_selector), this.driver, 10, 250L
-		);
+	}
+
+
+	/**
+	 * selectCorrectFilters - a private helper method responsible for searching all products and then selecting the correct
+	 * aisle filter category based on the passed in parameter
+	 * @param aisle_category - a String representing the aisle category to filter by
+	 * @return - returns true if the category was found as a filter category and selected, returns false otherwise
+	 */
+	private boolean selectCorrectFilters(String aisle_category) {
+		boolean found_category = false;
+		String form_selector = this.getConfigProperty("form_selector");
+		String filter_selector = this.getConfigProperty("filter_button_selector");
+		String filter_show_all_aisles_selector = this.getConfigProperty("filter_show_all_aisles_selector");
+		String filter_close_button_selector = this.getConfigProperty("filter_close_button_selector");
+		String next_items_selector = this.getConfigProperty("next_items_selector");
+		String view_all_products_link_selector = this.getConfigProperty("view_all_products_link_selector");
+		WebElement close_aisles_button, form, filter_button, show_all_aisles_button, filter_close_button;
 		JavascriptExecutor js = (JavascriptExecutor) this.driver;
-		js.executeScript("arguments[0].value = arguments[1];", larger_search_input, "   ");
-		search_button = WebElementOperations.fluentWait(
-			new By.ByCssSelector(search_button_selector), this.driver, 5, 250L
-		);
-		form = WebElementOperations.fluentWait(
-			new By.ByCssSelector(form_selector), this.driver, 10, 250L
-		);
-		js.executeScript("arguments[0].requestSubmit(arguments[1]);", form, search_button);
-		element_exists = WebElementOperations.elementExistsAndIsInteractable(
-			new By.ByCssSelector(sign_in_box_selector), this.driver, 10, 250L
-		);
-		if (element_exists) {
-			WebElement close_sign_in_button = WebElementOperations.fluentWaitTillVisibleandClickable(
-				new By.ByCssSelector(close_sign_in_box_selector), this.driver, 5, 250L
-			);
-			WebElementOperations.pauseThenClickThenPause(close_sign_in_button, 2000, 5000, this.driver);
-		}
 		filter_button = WebElementOperations.fluentWaitTillVisibleandClickable(
 			new By.ByCssSelector(filter_selector), this.driver, 30, 250L
 		);
@@ -243,41 +245,87 @@ public class MetroIterator extends BaseIterator {
 			filter_accordion_option_selector
 		);
 		String id;
-		System.out.println(menu_items.get(0));
-		String js_script = new StringBuilder()
-			.append("arguments[0].click();\n")
-			.append("var text_content = '';\n")
-			.append("var label_changed = false;\n")
-			.append("function verifyAndClickText(element) {\n")
-			.append("	text_content = element.textContent.toLowerCase().split(' ').join('');\n")
-			.append("	if (text_content == 'apply1filter') {\n")
-			.append("		element.click();\n")
-			.append("		label_changed = true;\n")
-			.append("	}\n")
-			.append("}\n")
-			.append("setTimeout(verifyAndClickText, 3000, arguments[1]);\n")
-			.toString();
 		WebElement input_box_in_question = input_boxes.get(0);
 		for (WebElement input_box: input_boxes) {
 			id = input_box.getAttribute("for");
-			if (0 == id.compareToIgnoreCase(menu_items.get(0))) {
+			if (0 == id.compareToIgnoreCase(aisle_category)) {
 				input_box_in_question =  input_box;
+				found_category = true;
 			}
 		}
-		String apply_filter_button_text_selector = this.getConfigProperty("apply_filter_button_selector");
-		WebElement apply_filter_button = WebElementOperations.fluentWaitTillVisibleandClickable(
-			new By.ByCssSelector(apply_filter_button_text_selector), this.driver, 10, 500L
+		if (found_category) {
+			input_box_in_question.click();
+			String apply_filter_button_text_selector = this.getConfigProperty("apply_filter_button_selector");
+			WebElement apply_filter_button = WebElementOperations.fluentWaitTillVisibleandClickable(
+				new By.ByCssSelector(apply_filter_button_text_selector), this.driver, 10, 500L
+			);
+			WebElementOperations.pauseThenClickThenPause(apply_filter_button, 2000, 3000, this.driver);
+			return true;
+		} else {
+			filter_close_button = WebElementOperations.fluentWaitTillVisibleandClickable(
+				new By.ByCssSelector(filter_close_button_selector), this.driver, 10, 500L
+			);
+			filter_close_button.click();
+			return false;
+		}
+	}
+
+
+	/**
+	 * scrapePrices - a private helper method to scrape all prices on the page, and put them as XML entries in the file
+	 */
+	private void scrapePrices() {
+	}
+
+
+	/**
+	 * scrapePrices - the private helper method responsible for scraping all prices for a given aisle category,
+	 * and putting the entries in an XML file
+	 * @param category - the String representing the category to look for and parse products for
+	 * @return - returns nothing (void)
+	 */
+	private void scrapeAllPrices(String category) {
+		boolean element_exists = false;
+		String search_input_selector = this.getConfigProperty("search_input_selector");
+		String larger_search_input_selector = this.getConfigProperty("larger_search_input_selector");
+		String search_button_selector = this.getConfigProperty("search_button_selector");
+		String form_selector = this.getConfigProperty("form_selector");
+		String filter_selector = this.getConfigProperty("filter_button_selector");
+		String next_items_selector = this.getConfigProperty("next_items_selector");
+		String view_all_products_link_selector = this.getConfigProperty("view_all_products_link_selector");
+		WebElement submenu_button, close_aisles_button, search_input, larger_search_input, search_button,
+			   form, filter_button, show_all_aisles_button, filter_close_button, next_items_link;
+		JavascriptExecutor js = (JavascriptExecutor) this.driver;
+		// First click the smaller search bar that shows on the main page, which leads to a larger search bar
+		search_input = WebElementOperations.fluentWait(new By.ByCssSelector(search_input_selector), this.driver, 5, 250L);
+		search_input.click();
+		larger_search_input = WebElementOperations.fluentWait(
+			new By.ByCssSelector(larger_search_input_selector), this.driver, 10, 250L
 		);
-		js.executeScript(js_script, input_box_in_question, apply_filter_button);
-		WebElementOperations.pauseThenClickThenPause(apply_filter_button, 2000, 5000, this.driver);
-		new Actions(this.driver).pause(Duration.ofSeconds(5)).perform();
-		next_items_link = WebElementOperations.fluentWait(
-			new By.ByCssSelector(next_items_selector), this.driver, 10, 500L
+		// Set the value equal to a couple of spaces, so that all products are returned, and then submit the form
+		js.executeScript("arguments[0].value = arguments[1];", larger_search_input, "   ");
+		search_button = WebElementOperations.fluentWait(
+			new By.ByCssSelector(search_button_selector), this.driver, 5, 250L
 		);
-		WebElementOperations.pauseThenClickThenPause(next_items_link, 2000, 5000, this.driver);
+		form = WebElementOperations.fluentWait(
+			new By.ByCssSelector(form_selector), this.driver, 10, 250L
+		);
+		js.executeScript("arguments[0].requestSubmit(arguments[1]);", form, search_button);
+		// Sometimes there is a sign in box that shows on the search results that has to be closed. I wait till the elements
+		// on the page have loaded first (otherwise elementExistsByJavaScript runs too early and fails)
 		filter_button = WebElementOperations.fluentWaitTillVisibleandClickable(
 			new By.ByCssSelector(filter_selector), this.driver, 30, 250L
 		);
+		this.closeSignInButton();
+		this.selectCorrectFilters(category);
+		next_items_link = WebElementOperations.fluentWait(
+			new By.ByCssSelector(next_items_selector), this.driver, 10, 500L
+		);
+		WebElementOperations.pauseThenClickThenPause(next_items_link, 2000, 2000, this.driver);
+		filter_button = WebElementOperations.fluentWaitTillVisibleandClickable(
+			new By.ByCssSelector(filter_selector), this.driver, 30, 500L
+		);
+		new Actions(this.driver).pause(Duration.ofSeconds(3)).perform();
 	}
 
 
@@ -302,7 +350,17 @@ public class MetroIterator extends BaseIterator {
 		this.driver = new FirefoxDriver(options);
 		this.driver.get(this.getConfigProperty("url"));
 		this.removeCookiesButton();
-		this.scrapePrices();
+		this.getAllAisleCategories();
+		int counter = 0;
+		while (!(this.categories_left.isEmpty())) {
+			this.scrapeAllPrices(this.categories_left.get(0));
+			this.categories_left.remove(0);
+			counter++;
+			if (counter > 0) {
+				counter = 0;
+				break;
+			}
+		}
 		this.driver.quit();
 	}
 }
