@@ -171,6 +171,30 @@ public class WebElementOperations {
 
 
 	/**
+	 * elementExistsByJavaScript - a public static method that checks if an element exists using javascript,
+	 * and returns true if it does, false if not
+	 * - It searches at the DOM tree from the WebElement element (by using "element.querySelector" instead of
+	 *   "document.querySelector")
+	 * - Note that this method is faster than the elementExists method, but it requires that the html is fully
+	 *   loaded the instant you use it, as it determines at that instant if the element exists or not
+	 * - If you are not sure if the page has fully loaded and you use this method, you may get back a return
+	 *   value of false (the element does not exist on the page, even if that element will show on the
+	 *   page after it fully loads, meaning it will first take time to load, and the answer is actually true)
+	 * @param driver - an instance of org.openqa.selenium.WebDriver representing a reference to the
+	 * webdriver used
+	 * @param css_selector - a string representing the css selector for the element you want to find
+	 * @param element - a WebElement representing the element to start searching from (through element.querySelector)
+	 * @return - true if the element was found, false otherwise
+	 */
+	public static boolean elementExistsByJavaScript(WebDriver driver, String css_selector, WebElement element) {
+		String script =  "if (arguments[1].querySelector(arguments[0])) return true; return false;";
+		JavascriptExecutor js = (JavascriptExecutor) driver;
+		Boolean element_exists = (Boolean) js.executeScript(script, css_selector, element);
+		return element_exists.booleanValue();
+	}
+
+
+	/**
 	 * elementExists - a public static method that waits for an element to be available, and then
 	 * returns true if the element is found within the given timeout duration, returns false otherwise
 	 * @param locator - the locator that you will use to locate the element (this is an instance of
@@ -273,6 +297,22 @@ public class WebElementOperations {
 			}
 		}
 	}
+
+
+	/**
+	 * getInnerText - a private helper method that gets the innerText value of a web element using JavaScript, useful
+	 * for getting all text from all recrusive child nodes from WebElement element
+	 * - documentation on innerText property: https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/innerText
+	 * @param element - the WebElement for which you want to get the innerText property value from
+	 * @param driver - the WebDriver instance to use (needed to cast into a JavascriptExecutor instance)
+	 * @return - returns a String of the innerText property value of the element
+	 */
+	public static String getInnerText(WebElement element, WebDriver driver) {
+		JavascriptExecutor js = (JavascriptExecutor) driver;
+		return (String) js.executeScript("return arguments[0].innerText;", element);
+	}
+
+
 
 
 }

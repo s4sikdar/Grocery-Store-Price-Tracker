@@ -203,7 +203,6 @@ public class MetroIterator extends BaseIterator {
 				this.driver, submenu_button_selector.toString()
 			);
 		}
-		submenu_button.click();
 		close_aisles_button = WebElementOperations.fluentWait(
 			new By.ByCssSelector(close_ailes_button_selector), this.driver, 5, 250L
 		);
@@ -254,7 +253,7 @@ public class MetroIterator extends BaseIterator {
 			}
 		}
 		if (found_category) {
-			input_box_in_question.click();
+			WebElementOperations.pauseThenClickThenPause(input_box_in_question, 2000, 3000, this.driver);
 			String apply_filter_button_text_selector = this.getConfigProperty("apply_filter_button_selector");
 			WebElement apply_filter_button = WebElementOperations.fluentWaitTillVisibleandClickable(
 				new By.ByCssSelector(apply_filter_button_text_selector), this.driver, 10, 500L
@@ -272,20 +271,100 @@ public class MetroIterator extends BaseIterator {
 
 
 	/**
-	 * scrapePrices - a private helper method to scrape all prices on the page, and put them as XML entries in the file
+	 * addInfoToHashMap - a private helper method that adds text to the hashmap passed in, with the text being the innerText
+	 * property of HTML element selected by css_selector, with the key in the hashmap being the passed in key_value parameter
+	 * @param css_selector - a String representing the CSS selector to find the element in question
+	 * @param key_value - the key value for the new entry in product_info
+	 * @param product_info - the hash map in question
+	 * @return - returns nothing (void)
 	 */
-	private void scrapePrices() {
+	private void addInfoToHashMap(String css_selector, String key_value, HashMap<String, String> product_info) {
+		boolean element_exists = WebElementOperations.elementExistsByJavaScript(
+			this.driver, css_selector
+		);
+		if (element_exists) {
+			WebElement element = this.driver.findElement(new By.ByCssSelector(css_selector));
+			String text_content = WebElementOperations.getInnerText(element, this.driver).trim().replace("\n", " ");
+			if (!(text_content.isEmpty())) {
+				product_info.put(key_value, text_content);
+			}
+		}
 	}
 
 
 	/**
-	 * scrapePrices - the private helper method responsible for scraping all prices for a given aisle category,
+	 * addInfoToHashMap - a private helper method that adds text to the hashmap passed in, with the text being the innerText
+	 * property of HTML element selected by css_selector, with the key in the hashmap being the passed in key_value parameter
+	 * @param css_selector - a String representing the CSS selector to find the element in question
+	 * @param key_value - the key value for the new entry in product_info
+	 * @param parent_element - the parent element to start searching from (i.e. parent_element.findElement(. . .))
+	 * @param product_info - the hash map in question
+	 * @return - returns nothing (void)
+	 */
+	private void addInfoToHashMap(
+		String css_selector, String key_value, WebElement parent_element, HashMap<String, String> product_info
+	) {
+		boolean element_exists = WebElementOperations.elementExistsByJavaScript(
+			this.driver, css_selector, parent_element
+		);
+		if (element_exists) {
+			WebElement element = parent_element.findElement(new By.ByCssSelector(css_selector));
+			String text_content = WebElementOperations.getInnerText(element, this.driver).trim().replace("\n", " ");
+			if (!(text_content.isEmpty())) {
+				product_info.put(key_value, text_content);
+			}
+		}
+	}
+
+
+	/**
+	 * scrapePrices - a private helper method to scrape all prices on the page, and put them as XML entries in the file
+	 * @return - returns nothing (void)
+	 */
+	private void scrapePrices() throws XMLStreamException {
+		boolean element_exists = false;
+		boolean volume_label_exists = false;
+		JavascriptExecutor js = (JavascriptExecutor) this.driver;
+		StringBuilder container_selector = new StringBuilder(this.getConfigProperty("container_selector"));
+		StringBuilder volume_selector = new StringBuilder(this.getConfigProperty("volume_selector"));
+		String product_title_selector = this.getConfigProperty("product_title_selector");
+		String product_price_selector = this.getConfigProperty("product_price_selector");
+		String pricing_unit_value_selector = this.getConfigProperty("pricing_unit_value_selector");
+		String comparison_price_unit_selector = this.getConfigProperty("comparison_price_unit_selector");
+		String product_brand_selector = this.getConfigProperty("product_brand_selector");
+		String missing_container_selector = this.getConfigProperty("missing_container_selector");
+		String product_title, product_price, pricing_unit_value, comparison_unit_price, product_brand_name, volume;
+		HashMap<String, String> product_info = new HashMap<>();
+		WebElement container, product_title_label, product_price_label, pricing_unit_value_label, comparison_unit_price_label,
+			   product_brand_label, volume_label;
+		element_exists = WebElementOperations.elementExistsAndIsInteractable(
+			new By.ByCssSelector(container_selector.toString()), this.driver, 10, 250L
+		);
+		List<WebElement> product_containers = (List<WebElement>) js.executeScript(
+			"return document.querySelectorAll(arguments[0]);", container_selector.toString()
+		);
+		for (WebElement product_container: product_containers) {
+			js.executeScript("arguments[0].scrollIntoView(true);", product_container);
+			this.addInfoToHashMap(product_title_selector, "product_title", product_container, product_info);
+			this.addInfoToHashMap(product_price_selector, "product_price", product_container, product_info);
+			this.addInfoToHashMap(pricing_unit_value_selector, "price_unit_Value", product_container, product_info);
+			this.addInfoToHashMap(
+				comparison_price_unit_selector, "comparison_unit_price", product_container, product_info
+			);
+			this.addInfoToHashMap(product_brand_selector, "product_brand_name", product_container, product_info);
+			this.addInfoToHashMap(volume_selector.toString(), "volume", product_container, product_info);
+			this.xml_parser.hashmapToXML(product_info);
+		}
+	}
+
+
+	/**
+	 * scrapeAllPrices - the private helper method responsible for scraping all prices for a given aisle category,
 	 * and putting the entries in an XML file
 	 * @param category - the String representing the category to look for and parse products for
 	 * @return - returns nothing (void)
 	 */
-	private void scrapeAllPrices(String category) {
-		boolean element_exists = false;
+	private void scrapeAllPrices(String category) throws XMLStreamException {
 		String search_input_selector = this.getConfigProperty("search_input_selector");
 		String larger_search_input_selector = this.getConfigProperty("larger_search_input_selector");
 		String search_button_selector = this.getConfigProperty("search_button_selector");
@@ -318,6 +397,7 @@ public class MetroIterator extends BaseIterator {
 		);
 		this.closeSignInButton();
 		this.selectCorrectFilters(category);
+		this.scrapePrices();
 		next_items_link = WebElementOperations.fluentWait(
 			new By.ByCssSelector(next_items_selector), this.driver, 10, 500L
 		);
@@ -361,6 +441,7 @@ public class MetroIterator extends BaseIterator {
 				break;
 			}
 		}
+		this.xml_parser.closeProductXmlOutputStream();
 		this.driver.quit();
 	}
 }
