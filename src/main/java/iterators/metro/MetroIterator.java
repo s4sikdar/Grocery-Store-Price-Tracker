@@ -154,10 +154,10 @@ public class MetroIterator extends BaseIterator {
 		boolean element_exists = false;
 		String sign_in_box_selector = this.getConfigProperty("sign_in_box_selector");
 		String close_sign_in_box_selector = this.getConfigProperty("close_sign_in_box_selector");
-		//element_exists = WebElementOperations.elementExistsAndIsInteractable(
-		//	new By.ByCssSelector(sign_in_box_selector), this.driver, 10, 250L
-		//);
-		element_exists = WebElementOperations.elementExistsByJavaScript(this.driver, sign_in_box_selector);
+		element_exists = WebElementOperations.elementExistsAndIsInteractable(
+			new By.ByCssSelector(sign_in_box_selector), this.driver, 10, 250L
+		);
+		//element_exists = WebElementOperations.elementExistsByJavaScript(this.driver, sign_in_box_selector);
 		if (element_exists) {
 			WebElement close_sign_in_button = WebElementOperations.fluentWaitTillVisibleandClickable(
 				new By.ByCssSelector(close_sign_in_box_selector), this.driver, 20, 250L
@@ -365,12 +365,15 @@ public class MetroIterator extends BaseIterator {
 	 * @return - returns nothing (void)
 	 */
 	private void scrapeAllPrices(String category) throws XMLStreamException {
+		boolean next_page_exists = false;
+		boolean category_found = false;
+		String class_attribute = "";
 		String search_input_selector = this.getConfigProperty("search_input_selector");
 		String larger_search_input_selector = this.getConfigProperty("larger_search_input_selector");
 		String search_button_selector = this.getConfigProperty("search_button_selector");
 		String form_selector = this.getConfigProperty("form_selector");
 		String filter_selector = this.getConfigProperty("filter_button_selector");
-		String next_items_selector = this.getConfigProperty("next_items_selector");
+		String next_items_selector = this.getConfigProperty("next_button_selector");
 		String view_all_products_link_selector = this.getConfigProperty("view_all_products_link_selector");
 		WebElement submenu_button, close_aisles_button, search_input, larger_search_input, search_button,
 			   form, filter_button, show_all_aisles_button, filter_close_button, next_items_link;
@@ -396,16 +399,28 @@ public class MetroIterator extends BaseIterator {
 			new By.ByCssSelector(filter_selector), this.driver, 30, 250L
 		);
 		this.closeSignInButton();
-		this.selectCorrectFilters(category);
-		this.scrapePrices();
-		next_items_link = WebElementOperations.fluentWait(
-			new By.ByCssSelector(next_items_selector), this.driver, 10, 500L
-		);
-		WebElementOperations.pauseThenClickThenPause(next_items_link, 2000, 2000, this.driver);
-		filter_button = WebElementOperations.fluentWaitTillVisibleandClickable(
-			new By.ByCssSelector(filter_selector), this.driver, 30, 500L
-		);
-		new Actions(this.driver).pause(Duration.ofSeconds(3)).perform();
+		category_found = this.selectCorrectFilters(category);
+		if (category_found) {
+			do {
+				this.scrapePrices();
+				next_items_link = WebElementOperations.fluentWait(
+					new By.ByCssSelector(next_items_selector), this.driver, 10, 500L
+				);
+				class_attribute = next_items_link.getAttribute("class");
+				if (class_attribute.contains("disabled")) {
+					next_page_exists = false;
+				} else {
+					next_page_exists = true;
+					//WebElementOperations.pauseThenClickThenPause(next_items_link, 2000, 2000, this.driver);
+					js.executeScript("arguments[0].scrollIntoView(false);", next_items_link);
+					next_items_link.click();
+					filter_button = WebElementOperations.fluentWaitTillVisibleandClickable(
+						new By.ByCssSelector(filter_selector), this.driver, 30, 500L
+					);
+				}
+			} while(next_page_exists);
+			new Actions(this.driver).pause(Duration.ofSeconds(1)).perform();
+		}
 	}
 
 
@@ -431,15 +446,9 @@ public class MetroIterator extends BaseIterator {
 		this.driver.get(this.getConfigProperty("url"));
 		this.removeCookiesButton();
 		this.getAllAisleCategories();
-		int counter = 0;
 		while (!(this.categories_left.isEmpty())) {
 			this.scrapeAllPrices(this.categories_left.get(0));
 			this.categories_left.remove(0);
-			counter++;
-			if (counter > 0) {
-				counter = 0;
-				break;
-			}
 		}
 		this.xml_parser.closeProductXmlOutputStream();
 		this.driver.quit();
