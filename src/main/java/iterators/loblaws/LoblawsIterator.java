@@ -463,6 +463,67 @@ public class LoblawsIterator extends BaseIterator {
 
 
 	/**
+	 * scrapeCompactProductInfo - private helper method that scrpaes all the product info within the page of all products
+	 * listed (in other words, it does not open a new tab for the product info page)
+	 * - once the information is scraped, it is put into XML
+	 * @param township - the String representing the township to put in the XML with the product information
+	 * @param product_parent_container - the WebElement representing the parent container with all product information
+	 * @return - a HashMap<String, String> instance with product data information (i.e. price, brand name, size, etc.)
+	 */
+	private HashMap<String, String> scrapeCompactProductInfo(String township, WebElement product_parent_container) {
+		HashMap<String, String> product_info = new HashMap<>();
+		String product_price_information_selctor = this.getConfigProperty("product_price_information_selctor");
+		String price_without_sale_price_selector = this.getConfigProperty("price_without_sale_price_selector");
+		String regular_price_selector = this.getConfigProperty("regular_price_selector");
+		String brand_selector = this.getConfigProperty("brand_selector");
+		String product_title_selector = this.getConfigProperty("product_title_selector");
+		String product_package_size_selector = this.getConfigProperty("product_package_size_selector");
+		boolean regular_price_shown = WebElementOperations.elementExistsByJavaScript(
+			this.driver, regular_price_selector, product_parent_container
+		);
+		boolean sale_price_shown = WebElementOperations.elementExistsByJavaScript(
+			this.driver, price_without_sale_price_selector, product_parent_container
+		);
+		boolean brand_selector_exists = WebElementOperations.elementExistsByJavaScript(
+			this.driver, brand_selector, product_parent_container
+		);
+		boolean product_title_exists = WebElementOperations.elementExistsByJavaScript(
+			this.driver, product_title_selector, product_parent_container
+		);
+		boolean product_package_size_exists = WebElementOperations.elementExistsByJavaScript(
+			this.driver, product_package_size_selector, product_parent_container
+		);
+		String price_info_selector = "";
+		if (regular_price_shown) {
+			price_info_selector = regular_price_selector;
+		}
+		if (sale_price_shown) {
+			price_info_selector = price_without_sale_price_selector;
+		}
+		if (!(price_info_selector.isEmpty())) {
+			WebElement price_info = product_parent_container.findElement(new By.ByCssSelector(price_info_selector));
+			product_info.put("price", price_info.getText());
+		}
+		if (brand_selector_exists) {
+			WebElement brand_info = product_parent_container.findElement(new By.ByCssSelector(brand_selector));
+			product_info.put("brand", brand_info.getText());
+		}
+		if (product_title_exists) {
+			WebElement product_title = product_parent_container.findElement(new By.ByCssSelector(product_title_selector));
+			product_info.put("product_title", product_title.getText());
+		}
+		if (product_package_size_exists) {
+			WebElement product_package_size_info = product_parent_container.findElement(
+				new By.ByCssSelector(product_package_size_selector)
+			);
+			product_info.put("package_size", product_package_size_info.getText());
+		}
+		product_info.put("township_location", township);
+		return product_info;
+	}
+
+
+	/**
 	 * scrapeAllPrices - a private method that goes through all the listed products in a subcategory and then
 	 * gathers a HashMap of information on each product
 	 * - the HashMap of information is added to the XML as an XML tag with the keys as subtags (their values
@@ -486,6 +547,10 @@ public class LoblawsIterator extends BaseIterator {
 		StringBuilder product_parent_container_selector = new StringBuilder(
 			this.getConfigProperty("product_parent_container_selector")
 		);
+		String no_items_text_selector = this.getConfigProperty("no_items_available_text_selector");
+		String no_items_text = "";
+		String no_items_text_to_search = this.getConfigProperty("no_items_available_text");
+		By no_items_text_locator = new By.ByCssSelector(no_items_text_selector);
 		By next_button_locator = new By.ByCssSelector(next_button_selector.toString());
 		By pagination_locator = new By.ByCssSelector(pagination_selector);
 		By product_parent_container_locator = new By.ByCssSelector(
@@ -498,6 +563,7 @@ public class LoblawsIterator extends BaseIterator {
 		String next_button_disabled;
 		JavascriptExecutor js = (JavascriptExecutor) this.driver;
 		WebElement product_parent_container;
+		WebElement no_items_text_element;
 		while (next_button_interactable) {
 			if (at_bottom) {
 				WebElement next_button = WebElementOperations.fluentWait(
@@ -516,6 +582,11 @@ public class LoblawsIterator extends BaseIterator {
 					product_parent_container_selector.toString()
 				);
 			}
+			no_items_text_element = WebElementOperations.fluentWait(no_items_text_locator, this.driver, 5, 250L);
+			no_items_text = no_items_text_element.getText();
+			if (no_items_text.equalsIgnoreCase(no_items_text_to_search)) {
+				break;
+			}
 			parent_container_exists = WebElementOperations.elementExists(
 				product_parent_container_locator, this.driver, 10, 250L
 			);
@@ -524,7 +595,8 @@ public class LoblawsIterator extends BaseIterator {
 					product_parent_container_locator, this.driver, 5, 250L
 				);
 				js.executeScript("arguments[0].scrollIntoView(true);", product_parent_container);
-				price_data = this.scrapeProductInfoWithRetries(city, product_info_link_selector, 3);
+				//price_data = this.scrapeProductInfoWithRetries(city, product_info_link_selector, 3);
+				price_data = this.scrapeCompactProductInfo(city, product_parent_container);
 				if (!(price_data.isEmpty())) {
 					this.xml_parser.hashmapToXML(price_data);
 				}
@@ -824,9 +896,7 @@ public class LoblawsIterator extends BaseIterator {
 				);
 				continue;
 			}
-			new Actions(this.driver)
-				.moveToElement(main_menu_item)
-				.pause(Duration.ofMillis(200)).click().perform();
+			WebElementOperations.pauseThenClick(main_menu_item, 200, this.driver);
 			submenu_item_exists = WebElementOperations.elementExistsAndIsInteractable(
 				submenu_item_locator, this.driver, 30, 100L
 			);
@@ -952,7 +1022,6 @@ public class LoblawsIterator extends BaseIterator {
 			main_menu_item_locator = new By.ByCssSelector(main_menu_item_selector.toString());
 			main_menu_item_exists = WebElementOperations.elementExistsAndIsInteractable(main_menu_item_locator, this.driver, 5, 100L);
 		}
-		this.driver.get(this.getConfigProperty("url"));
 	}
 
 
