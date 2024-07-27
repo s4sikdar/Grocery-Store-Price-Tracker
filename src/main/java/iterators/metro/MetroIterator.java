@@ -87,9 +87,9 @@ public class MetroIterator extends BaseIterator {
 		Path pwd = Paths.get(currentPath);
 		String fname_for_cities_left = this.getConfigProperty("categories_left_fname");
 		Path xml_path = pwd.resolve(fname_for_cities_left);
-		File xml_cities_file = new File(xml_path.toString());
-		boolean xml_cities_file_exists = xml_cities_file.exists();
-		return xml_cities_file_exists;
+		File categories_file = new File(xml_path.toString());
+		boolean categories_file_exists = categories_file.exists();
+		return categories_file_exists;
 	}
 
 
@@ -103,9 +103,9 @@ public class MetroIterator extends BaseIterator {
 		Path pwd = Paths.get(currentPath);
 		String fname_for_cities_left = this.getConfigProperty("subcategories_left_fname");
 		Path xml_path = pwd.resolve(fname_for_cities_left);
-		File xml_cities_file = new File(xml_path.toString());
-		boolean xml_cities_file_exists = xml_cities_file.exists();
-		return xml_cities_file_exists;
+		File subcategories_file = new File(xml_path.toString());
+		boolean subcategories_file_exists = subcategories_file.exists();
+		return subcategories_file_exists;
 	}
 
 
@@ -157,7 +157,6 @@ public class MetroIterator extends BaseIterator {
 		element_exists = WebElementOperations.elementExistsAndIsInteractable(
 			new By.ByCssSelector(sign_in_box_selector), this.driver, 10, 250L
 		);
-		//element_exists = WebElementOperations.elementExistsByJavaScript(this.driver, sign_in_box_selector);
 		if (element_exists) {
 			WebElement close_sign_in_button = WebElementOperations.fluentWaitTillVisibleandClickable(
 				new By.ByCssSelector(close_sign_in_box_selector), this.driver, 20, 250L
@@ -367,6 +366,7 @@ public class MetroIterator extends BaseIterator {
 	private void scrapeAllPrices(String category) throws XMLStreamException {
 		boolean next_page_exists = false;
 		boolean category_found = false;
+		boolean filter_button_exists = false;
 		String class_attribute = "";
 		String search_input_selector = this.getConfigProperty("search_input_selector");
 		String larger_search_input_selector = this.getConfigProperty("larger_search_input_selector");
@@ -414,13 +414,65 @@ public class MetroIterator extends BaseIterator {
 					//WebElementOperations.pauseThenClickThenPause(next_items_link, 2000, 2000, this.driver);
 					js.executeScript("arguments[0].scrollIntoView(false);", next_items_link);
 					next_items_link.click();
-					filter_button = WebElementOperations.fluentWaitTillVisibleandClickable(
+					filter_button_exists = WebElementOperations.elementExistsAndIsInteractable(
 						new By.ByCssSelector(filter_selector), this.driver, 30, 500L
 					);
+					if (filter_button_exists) {
+						filter_button = WebElementOperations.fluentWaitTillVisibleandClickable(
+							new By.ByCssSelector(filter_selector), this.driver, 30, 500L
+						);
+					} else {
+						next_page_exists = false;
+					}
 				}
 			} while(next_page_exists);
 			new Actions(this.driver).pause(Duration.ofSeconds(1)).perform();
 		}
+	}
+
+
+	/**
+	 * writeCategoriesLeft - a private helper method that writes all of the Strings in this.categories_left to an
+	 * XML file, with the filename, root tag name, and the tag name for each entry being dependent on the
+	 * configuration file represented by this.configurations
+	 * @return - returns nothing (void)
+	 */
+	private void writeCategoriesLeft() throws XMLStreamException {
+		String categories_left_fname = this.getConfigProperty("categories_left_fname");
+		String root_categories_tag = this.getConfigProperty("root_categories_tag");
+		String individual_category_tag = this.getConfigProperty("individual_category_tag");
+		XMLParser categories_left_xml = new XMLParser(
+			categories_left_fname, root_categories_tag, individual_category_tag
+		);
+		for (String category: this.categories_left) {
+			categories_left_xml.createXMLNode(
+				individual_category_tag, category
+			);
+		}
+		categories_left_xml.closeProductXmlOutputStream();
+	}
+
+
+	/**
+	 * menuItemToBeIgnored - a private helper method to check if the text of the passed in WebElement is the
+	 * text of a main menu item that should be ignored, or if the menu item should be clicked on
+	 * - the passed in WebElement represents a clickable button or anchor tag that represents a main menu item
+	 *   to further expand
+	 * - the passed in WebElement should have text inside it
+	 * @param item_in_question - a String representing the menu item that is in question of being ignored
+	 * @return - returns true if the menu item should be ignored, returns false otherwise
+	 * */
+	private boolean menuItemToBeIgnored(String item_in_question) {
+		boolean string_is_contained;
+		String main_menu_items_to_ignore = this.getConfigProperty("main_menu_items_to_ignore");
+		String[] items_to_ignore = main_menu_items_to_ignore.split(";");
+		for (String item_to_ignore: items_to_ignore) {
+			string_is_contained = item_in_question.toLowerCase().contains(item_to_ignore.toLowerCase());
+			if (string_is_contained) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 
@@ -442,13 +494,39 @@ public class MetroIterator extends BaseIterator {
 		//options.addPreference(
 		//	"geo.wifi.uri", "https://location.services.mozilla.com/v1/geolocate?key=%MOZILLA_API_KEY%"
 		//);
+		String fname_for_categories_left = this.getConfigProperty("categories_left_fname");
+		String root_tag_name = this.getConfigProperty("root_categories_tag");
+		String category_tag_name = this.getConfigProperty("individual_category_tag");
+		DOMParser categories_left = new DOMParser(
+			fname_for_categories_left, root_tag_name, category_tag_name
+		);
 		this.driver = new FirefoxDriver(options);
 		this.driver.get(this.getConfigProperty("url"));
 		this.removeCookiesButton();
-		this.getAllAisleCategories();
+		if (this.categoriesFileExists()) {
+			this.categories_left.clear();
+			while (categories_left.hasNext()) {
+				this.categories_left.add(categories_left.next());
+			}
+		} else {
+			this.getAllAisleCategories();
+		}
+		if (this.timeLimitExists()) {
+			this.startTimer();
+		}
 		while (!(this.categories_left.isEmpty())) {
-			this.scrapeAllPrices(this.categories_left.get(0));
+			if (!(this.menuItemToBeIgnored(this.categories_left.get(0)))) {
+				this.scrapeAllPrices(this.categories_left.get(0));
+			}
 			this.categories_left.remove(0);
+			if (this.timeUp()) {
+				categories_left.delete();
+				this.writeCategoriesLeft();
+				break;
+			}
+		}
+		if (this.categories_left.isEmpty()) {
+			categories_left.delete();
 		}
 		this.xml_parser.closeProductXmlOutputStream();
 		this.driver.quit();

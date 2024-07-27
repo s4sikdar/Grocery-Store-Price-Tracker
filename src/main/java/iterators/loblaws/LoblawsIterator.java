@@ -106,9 +106,9 @@ public class LoblawsIterator extends BaseIterator {
 		Path pwd = Paths.get(currentPath);
 		String fname_for_cities_left = this.getConfigProperty("categories_left_fname");
 		Path xml_path = pwd.resolve(fname_for_cities_left);
-		File xml_cities_file = new File(xml_path.toString());
-		boolean xml_cities_file_exists = xml_cities_file.exists();
-		return xml_cities_file_exists;
+		File categories_file = new File(xml_path.toString());
+		boolean categories_file_exists = categories_file.exists();
+		return categories_file_exists;
 	}
 
 
@@ -122,9 +122,9 @@ public class LoblawsIterator extends BaseIterator {
 		Path pwd = Paths.get(currentPath);
 		String fname_for_cities_left = this.getConfigProperty("subcategories_left_fname");
 		Path xml_path = pwd.resolve(fname_for_cities_left);
-		File xml_cities_file = new File(xml_path.toString());
-		boolean xml_cities_file_exists = xml_cities_file.exists();
-		return xml_cities_file_exists;
+		File subcategories_file = new File(xml_path.toString());
+		boolean subcategories_file_exists = subcategories_file.exists();
+		return subcategories_file_exists;
 	}
 
 

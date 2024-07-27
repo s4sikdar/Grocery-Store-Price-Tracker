@@ -195,6 +195,39 @@ public class WebElementOperations {
 
 
 	/**
+	 * elementExistsAndIsInteractableByJavaScript - a public static method that checks if an element exists
+	 * using javascript, as well as if the element is visible on the page, returning true if it exists and
+	 * false otherwise
+	 * - visibility is determined on if the rectangle representing the elemnt has positive width and height, as
+	 *   well as if the javascript's checkVisibility method on the element returns true
+	 * - Note that this method is faster than the elementExistsAndIsInteractable method, but it requires that
+	 *   the html is fully loaded the instant you use it, as it determines at that instant if the element exists
+	 *   or not
+	 * - If you are not sure if the page has fully loaded and you use this method, you may get back a return
+	 *   value of false (the element does not exist on the page, even if that element will show on the
+	 *   page after it fully loads, meaning it will first take time to load, and the answer is actually true)
+	 * @param driver - an instance of org.openqa.selenium.WebDriver representing a reference to the
+	 * webdriver used
+	 * @param css_selector - a string representing the css selector for the element you want to find
+	 * @return - true if the element was found and is visible, false otherwise
+	 */
+	public static boolean elementExistsAndIsInteractableByJavaScript(WebDriver driver, String css_selector) {
+		JavascriptExecutor js = (JavascriptExecutor) driver;
+		String script = new StringBuilder()
+			.append("var element = document.querySelector(arguments[0]);\n")
+			.append("var rectangle = element.getBoundingClientRect();\n")
+			.append("var width = rectangle.right - rectangle.left;\n")
+			.append("var height = rectangle.bottom - rectangle.top;\n")
+			.append("if ((width > 0) && (height > 0)) return true; return false;").toString();
+		String check_visibility_script = "return document.querySelector(arguments[0]).checkVisibility();";
+		Boolean element_visible = (Boolean) js.executeScript(check_visibility_script, css_selector);
+		Boolean rectangle_dimensions_positive = (Boolean) js.executeScript(script, css_selector);
+		boolean element_exists = WebElementOperations.elementExistsByJavaScript(driver, css_selector);
+		return ((element_exists && rectangle_dimensions_positive.booleanValue()) && element_visible.booleanValue());
+	}
+
+
+	/**
 	 * elementExists - a public static method that waits for an element to be available, and then
 	 * returns true if the element is found within the given timeout duration, returns false otherwise
 	 * @param locator - the locator that you will use to locate the element (this is an instance of
