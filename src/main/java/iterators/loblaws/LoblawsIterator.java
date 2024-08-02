@@ -478,6 +478,8 @@ public class LoblawsIterator extends BaseIterator {
 		String brand_selector = this.getConfigProperty("brand_selector");
 		String product_title_selector = this.getConfigProperty("product_title_selector");
 		String product_package_size_selector = this.getConfigProperty("product_package_size_selector");
+		String breadcrumb_selector = this.getConfigProperty("breadcrumb_item_selector");
+		String breadcrumb_container_selector = this.getConfigProperty("breadcrumb_container_selector");
 		boolean regular_price_shown = WebElementOperations.elementExistsByJavaScript(
 			this.driver, regular_price_selector, product_parent_container
 		);
@@ -516,8 +518,16 @@ public class LoblawsIterator extends BaseIterator {
 			WebElement product_package_size_info = product_parent_container.findElement(
 				new By.ByCssSelector(product_package_size_selector)
 			);
-			product_info.put("package_size", product_package_size_info.getText());
+			String package_size = product_package_size_info.getText();
+			String[] sizing_units = package_size.split("[,.]{1}\\s*\\${1}");
+			if (sizing_units.length > 1) {
+				product_info.put("unit_price", "$" + sizing_units[1]);
+			}
+			product_info.put("size", sizing_units[0]);
 		}
+		WebElement breadcrumb_container = this.driver.findElement(new By.ByCssSelector(breadcrumb_container_selector));
+		String category_path = WebElementOperations.getInnerText(breadcrumb_container, this.driver).replace("\n", ">");
+		product_info.put("category_path", category_path);
 		product_info.put("township_location", township);
 		return product_info;
 	}
@@ -582,7 +592,12 @@ public class LoblawsIterator extends BaseIterator {
 					product_parent_container_selector.toString()
 				);
 			}
-			no_items_text_element = WebElementOperations.fluentWait(no_items_text_locator, this.driver, 5, 250L);
+			try {
+				no_items_text_element = WebElementOperations.fluentWait(no_items_text_locator, this.driver, 5, 250L);
+			} catch (Throwable err) {
+				next_button_interactable = false;
+				continue;
+			}
 			no_items_text = no_items_text_element.getText();
 			if (no_items_text.equalsIgnoreCase(no_items_text_to_search)) {
 				break;

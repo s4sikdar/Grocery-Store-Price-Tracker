@@ -352,6 +352,7 @@ public class MetroIterator extends BaseIterator {
 			);
 			this.addInfoToHashMap(product_brand_selector, "product_brand_name", product_container, product_info);
 			this.addInfoToHashMap(volume_selector.toString(), "volume", product_container, product_info);
+			product_info.put("category", this.categories_left.get(0));
 			this.xml_parser.hashmapToXML(product_info);
 		}
 	}
@@ -473,6 +474,19 @@ public class MetroIterator extends BaseIterator {
 			}
 		}
 		return false;
+	}
+
+
+	private void gatherStores() {
+		String store_locator_container_selector = this.getConfigProperty("store_locator_container_selector");
+		String store_locator = this.getConfigProperty("store_locator");
+		WebElement store_locator_container = WebElementOperations.fluentWait(
+			new By.ByCssSelector(store_locator_container_selector), this.driver, 30, 500L
+		);
+		WebElement store_locator_button = store_locator_container.findElement(new By.ByCssSelector(store_locator));
+		JavascriptExecutor js = (JavascriptExecutor) this.driver;
+		js.executeScript("arguments[0].scrollIntoView(false);", store_locator_container);
+		WebElementOperations.pauseThenClickThenPause(store_locator_button, 3000, 60000, this.driver);
 	}
 
 

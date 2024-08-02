@@ -69,7 +69,8 @@ public class BaseIterator implements GroceryStorePriceScraper {
 
 	public BaseIterator(String config_file_path, int hours, int minutes) {
 		this.hours = hours;
-		this.minutes = minutes;
+		this.minutes = minutes % 60;
+		this.hours += (minutes / 60);
 		this.setUpConfigAndXML(config_file_path);
 	}
 

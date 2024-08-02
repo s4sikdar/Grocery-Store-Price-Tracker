@@ -395,23 +395,8 @@ public class XMLParser {
 				} else if (name.equals(this.root_tag)) {
 					continue;
 				} else {
-					next_event = this.xml_event_reader.nextEvent();
-					while (
-						(!(next_event.isCharacters())) &&
-						(this.xml_event_reader.hasNext())
-					) {
-						next_event = this.xml_event_reader.nextEvent();
-					}
-					if (!(this.xml_event_reader.hasNext())) {
-						return product_details;
-					}
-					value = next_event.asCharacters();
-					whitespace_data = (
-						value.isIgnorableWhiteSpace() || value.isWhiteSpace()
-					);
-					if (!whitespace_data) {
-						product_details.put(name, value.getData());
-					}
+					String content = this.xml_event_reader.getElementText().strip();
+					product_details.put(name, content);
 				}
 			} else if (next_event.isEndElement()) {
 				EndElement end_element = next_event.asEndElement();
