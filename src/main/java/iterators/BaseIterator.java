@@ -182,4 +182,20 @@ public class BaseIterator implements GroceryStorePriceScraper {
 	}
 
 
+	/**
+	 * citiesFileExists - a protected helper method that determines if the xml file storing townships exists,
+	 * and returns true if this file exists
+	 * @return - returns true if the file exists, returns false otherwise
+	 */
+	protected boolean citiesFileExists() {
+		String currentPath = System.getProperty("user.dir");
+		Path pwd = Paths.get(currentPath);
+		String fname_for_cities_left = this.getConfigProperty("cities_left_fname");
+		Path xml_path = pwd.resolve(fname_for_cities_left);
+		File xml_cities_file = new File(xml_path.toString());
+		boolean xml_cities_file_exists = xml_cities_file.exists();
+		return xml_cities_file_exists;
+	}
+
+
 }
