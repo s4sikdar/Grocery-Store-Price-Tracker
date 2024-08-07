@@ -44,7 +44,9 @@ import iterators.util.*;
 public class MetroIterator extends BaseIterator {
 	private WebDriver driver;
 	private ArrayList<String> categories_left;
+	private ArrayList<String> all_categories;
 	private ArrayList<String> subcategories_left;
+	private ArrayList<String> cities_left;
 	private boolean cookies_menu_removed;
 
 
@@ -73,6 +75,8 @@ public class MetroIterator extends BaseIterator {
 		this.driver = null;
 		this.subcategories_left = new ArrayList<String>();
 		this.categories_left = new ArrayList<String>();
+		this.all_categories = new ArrayList<String>();
+		this.cities_left = new ArrayList<String>();
 		this.cookies_menu_removed = false;
 	}
 
@@ -168,6 +172,140 @@ public class MetroIterator extends BaseIterator {
 
 
 	/**
+	 * gatherStoreLocations - a private helper method to gather all stores and put it the store entries in an XML file
+	 * @return - returns nothing (void)
+	 */
+	private void gatherStoreLocations() throws InterruptedException, XMLStreamException {
+		String store_locator_container_selector = this.getConfigProperty("store_locator_container_selector");
+		String store_locator = this.getConfigProperty("store_locator");
+		String parent_form_selector = this.getConfigProperty("parent_form_selector");
+		String cities_left_fname = this.getConfigProperty("cities_left_fname");
+		String root_cities_tag = this.getConfigProperty("root_cities_tag");
+		String individual_city_tag = this.getConfigProperty("individual_city_tag");
+		StringBuilder individual_city_selector = new StringBuilder(this.getConfigProperty("individual_city_selector"));
+		String element_text;
+		WebElement parent_form;
+		WebElement individual_city;
+		WebElement store_locator_container = WebElementOperations.fluentWait(
+			new By.ByCssSelector(store_locator_container_selector), this.driver, 30, 500L
+		);
+		WebElement store_locator_button = store_locator_container.findElement(new By.ByCssSelector(store_locator));
+		JavascriptExecutor js = (JavascriptExecutor) this.driver;
+		js.executeScript(
+			"arguments[0].scrollIntoView({block: 'end', inline:'nearest', behaviour:'smooth'});", store_locator_container
+		);
+		WebElementOperations.pauseThenClickThenPause(store_locator_button, 3000, 1000, this.driver);
+		parent_form = WebElementOperations.fluentWait(
+			new By.ByCssSelector(parent_form_selector), this.driver, 30, 500L
+		);
+		js.executeScript(
+			"arguments[0].scrollIntoView({block: 'end', inline:'nearest', behaviour:'smooth'});", parent_form
+		);
+		XMLParser store_location_xml_writer = new XMLParser(cities_left_fname, root_cities_tag, individual_city_tag);
+		boolean individual_city_exists = WebElementOperations.elementExists(
+			new By.ByCssSelector(individual_city_selector.toString()), this.driver, 30, 500L
+		);
+		while (individual_city_exists) {
+			individual_city = WebElementOperations.fluentWait(
+				new By.ByCssSelector(individual_city_selector.toString()), this.driver, 30, 500L
+			);
+			element_text = WebElementOperations.getInnerText(individual_city, this.driver);
+			//element_text = individual_city.getText();
+			store_location_xml_writer.createXMLNode(individual_city_tag, element_text);
+			this.cities_left.add(element_text);
+			individual_city_selector = SelectorOperations.incrementSelectorDigit(individual_city_selector);
+			individual_city_exists = WebElementOperations.elementExistsByJavaScript(
+				this.driver, individual_city_selector.toString()
+			);
+		}
+		store_location_xml_writer.closeProductXmlOutputStream();
+	}
+
+
+	/**
+	 * changeLocation - a private method to change the location of the town involved
+	 * @param township - a String representing the town to which you are to change the location to
+	 */
+	private void changeLocation(String township) {
+		String store_locator_container_selector = this.getConfigProperty("store_locator_container_selector");
+		String store_locator = this.getConfigProperty("store_locator");
+		String parent_form_selector = this.getConfigProperty("parent_form_selector");
+		String search_city_button_selector = this.getConfigProperty("search_city_button_selector");
+		String first_search_result_selector = this.getConfigProperty("first_search_result_selector");
+		String save_location_button_selector = this.getConfigProperty("save_location_button_selector");
+		String show_store_map_button_selector = this.getConfigProperty("show_store_map_button_selector");
+		String city_search_button_selector = this.getConfigProperty("city_search_button_selector");
+		String element_text = "";
+		StringBuilder individual_city_selector = new StringBuilder(this.getConfigProperty("individual_city_selector"));
+		WebElement store_locator_container;
+		WebElement store_locator_button;
+		WebElement parent_form;
+		WebElement search_city_button;
+		WebElement individual_city;
+		WebElement first_search_result;
+		WebElement save_location_button;
+		WebElement show_store_map_button;
+		JavascriptExecutor js = (JavascriptExecutor) this.driver;
+		boolean individual_city_exists;
+		boolean parent_form_exists = WebElementOperations.elementExistsByJavaScript(this.driver, parent_form_selector);
+		if (!parent_form_exists) {
+			store_locator_container = WebElementOperations.fluentWait(
+				new By.ByCssSelector(store_locator_container_selector), this.driver, 30, 500L
+			);
+			store_locator_button = store_locator_container.findElement(new By.ByCssSelector(store_locator));
+			js.executeScript(
+				"arguments[0].scrollIntoView({block: 'end', inline:'nearest', behaviour:'smooth'});",
+				store_locator_container
+			);
+			WebElementOperations.pauseThenClickThenPause(store_locator_button, 3000, 1000, this.driver);
+			this.closeSignInButton();
+			parent_form = WebElementOperations.fluentWait(
+				new By.ByCssSelector(parent_form_selector), this.driver, 30, 500L
+			);
+			js.executeScript(
+				"arguments[0].scrollIntoView({block: 'start', inline:'nearest', behaviour:'smooth'});", parent_form
+			);
+		}
+		search_city_button = WebElementOperations.fluentWait(
+			new By.ByCssSelector(city_search_button_selector), this.driver, 30, 500L
+		);
+		WebElementOperations.pauseThenClickThenPause(search_city_button, 1000, 1000, this.driver);
+		individual_city_exists = WebElementOperations.elementExists(
+			new By.ByCssSelector(individual_city_selector.toString()), this.driver, 30, 500L
+		);
+		while (individual_city_exists) {
+			individual_city = WebElementOperations.fluentWait(
+				new By.ByCssSelector(individual_city_selector.toString()), this.driver, 30, 500L
+			);
+			element_text = individual_city.getText();
+			if (element_text.equalsIgnoreCase(township)) {
+				js.executeScript("arguments[0].scrollIntoView(false);", individual_city);
+				individual_city.click();
+				break;
+			}
+			individual_city_selector = SelectorOperations.incrementSelectorDigit(individual_city_selector);
+			individual_city_exists = WebElementOperations.elementExistsByJavaScript(
+				this.driver, individual_city_selector.toString()
+			);
+		}
+		first_search_result = WebElementOperations.fluentWait(
+			new By.ByCssSelector(first_search_result_selector), this.driver, 30, 500L
+		);
+		save_location_button = WebElementOperations.fluentWait(
+			new By.ByCssSelector(save_location_button_selector), this.driver, 30, 500L
+		);
+		js.executeScript(
+			"arguments[0].scrollIntoView({block: 'start', inline:'nearest', behaviour:'smooth'});", first_search_result
+		);
+		save_location_button.click();
+		show_store_map_button = WebElementOperations.fluentWait(
+			new By.ByCssSelector(show_store_map_button_selector), this.driver, 30, 500L
+		);
+		this.cities_left.remove(township);
+	}
+
+
+	/**
 	 * getAllAisleCategories - a private helper method that gets all aisle categories to go through, and then puts them in
 	 * this.categories_left
 	 * @return - returns nothing (void)
@@ -197,6 +335,7 @@ public class MetroIterator extends BaseIterator {
 			);
 			name_attribute_value = submenu_button.getAttribute(submenu_name_attribute);
 			this.categories_left.add(name_attribute_value);
+			this.all_categories.add(name_attribute_value);
 			submenu_button_selector = SelectorOperations.incrementSelectorDigit(submenu_button_selector, index);
 			element_exists = WebElementOperations.elementExistsByJavaScript(
 				this.driver, submenu_button_selector.toString()
@@ -318,9 +457,10 @@ public class MetroIterator extends BaseIterator {
 
 	/**
 	 * scrapePrices - a private helper method to scrape all prices on the page, and put them as XML entries in the file
+	 * @param township - the String representing the township for which product information is scraped
 	 * @return - returns nothing (void)
 	 */
-	private void scrapePrices() throws XMLStreamException {
+	private void scrapePrices(String township) throws XMLStreamException {
 		boolean element_exists = false;
 		boolean volume_label_exists = false;
 		JavascriptExecutor js = (JavascriptExecutor) this.driver;
@@ -343,7 +483,9 @@ public class MetroIterator extends BaseIterator {
 			"return document.querySelectorAll(arguments[0]);", container_selector.toString()
 		);
 		for (WebElement product_container: product_containers) {
-			js.executeScript("arguments[0].scrollIntoView(true);", product_container);
+			js.executeScript(
+				"arguments[0].scrollIntoView({block: 'end', inline:'nearest', behaviour:'smooth'});", product_container
+			);
 			this.addInfoToHashMap(product_title_selector, "product_title", product_container, product_info);
 			this.addInfoToHashMap(product_price_selector, "product_price", product_container, product_info);
 			this.addInfoToHashMap(pricing_unit_value_selector, "price_unit_Value", product_container, product_info);
@@ -353,6 +495,7 @@ public class MetroIterator extends BaseIterator {
 			this.addInfoToHashMap(product_brand_selector, "product_brand_name", product_container, product_info);
 			this.addInfoToHashMap(volume_selector.toString(), "volume", product_container, product_info);
 			product_info.put("category", this.categories_left.get(0));
+			product_info.put("township_location", township);
 			this.xml_parser.hashmapToXML(product_info);
 		}
 	}
@@ -362,9 +505,10 @@ public class MetroIterator extends BaseIterator {
 	 * scrapeAllPrices - the private helper method responsible for scraping all prices for a given aisle category,
 	 * and putting the entries in an XML file
 	 * @param category - the String representing the category to look for and parse products for
+	 * @param township - the String representing the township for which product information is scraped
 	 * @return - returns nothing (void)
 	 */
-	private void scrapeAllPrices(String category) throws XMLStreamException {
+	private void scrapeAllPrices(String category, String township) throws XMLStreamException {
 		boolean next_page_exists = false;
 		boolean category_found = false;
 		boolean filter_button_exists = false;
@@ -380,6 +524,7 @@ public class MetroIterator extends BaseIterator {
 			   form, filter_button, show_all_aisles_button, filter_close_button, next_items_link;
 		JavascriptExecutor js = (JavascriptExecutor) this.driver;
 		// First click the smaller search bar that shows on the main page, which leads to a larger search bar
+		//this.changeLocation(township);
 		search_input = WebElementOperations.fluentWait(new By.ByCssSelector(search_input_selector), this.driver, 5, 250L);
 		search_input.click();
 		larger_search_input = WebElementOperations.fluentWait(
@@ -403,7 +548,7 @@ public class MetroIterator extends BaseIterator {
 		category_found = this.selectCorrectFilters(category);
 		if (category_found) {
 			do {
-				this.scrapePrices();
+				this.scrapePrices(township);
 				next_items_link = WebElementOperations.fluentWait(
 					new By.ByCssSelector(next_items_selector), this.driver, 10, 500L
 				);
@@ -477,19 +622,6 @@ public class MetroIterator extends BaseIterator {
 	}
 
 
-	private void gatherStores() {
-		String store_locator_container_selector = this.getConfigProperty("store_locator_container_selector");
-		String store_locator = this.getConfigProperty("store_locator");
-		WebElement store_locator_container = WebElementOperations.fluentWait(
-			new By.ByCssSelector(store_locator_container_selector), this.driver, 30, 500L
-		);
-		WebElement store_locator_button = store_locator_container.findElement(new By.ByCssSelector(store_locator));
-		JavascriptExecutor js = (JavascriptExecutor) this.driver;
-		js.executeScript("arguments[0].scrollIntoView(false);", store_locator_container);
-		WebElementOperations.pauseThenClickThenPause(store_locator_button, 3000, 60000, this.driver);
-	}
-
-
 	/**
 	 * loadXML - a public method that gets all possible cities where there is a store location, and for each
 	 * city, selects a store in that city and scrapes price information for all products in that store
@@ -511,9 +643,14 @@ public class MetroIterator extends BaseIterator {
 		String fname_for_categories_left = this.getConfigProperty("categories_left_fname");
 		String root_tag_name = this.getConfigProperty("root_categories_tag");
 		String category_tag_name = this.getConfigProperty("individual_category_tag");
+		String cities_left_fname = this.getConfigProperty("cities_left_fname");
+		String root_cities_tag = this.getConfigProperty("root_cities_tag");
+		String individual_city_tag = this.getConfigProperty("individual_city_tag");
+		String city;
 		DOMParser categories_left = new DOMParser(
 			fname_for_categories_left, root_tag_name, category_tag_name
 		);
+		DOMParser cities_xml_dom_parser = new DOMParser(cities_left_fname, root_cities_tag, individual_city_tag);
 		this.driver = new FirefoxDriver(options);
 		this.driver.get(this.getConfigProperty("url"));
 		this.removeCookiesButton();
@@ -528,19 +665,37 @@ public class MetroIterator extends BaseIterator {
 		if (this.timeLimitExists()) {
 			this.startTimer();
 		}
-		while (!(this.categories_left.isEmpty())) {
-			if (!(this.menuItemToBeIgnored(this.categories_left.get(0)))) {
-				this.scrapeAllPrices(this.categories_left.get(0));
+		if (!(this.citiesFileExists())) {
+			this.gatherStoreLocations();
+		}
+		while (cities_xml_dom_parser.hasNext()) {
+			city = cities_xml_dom_parser.next();
+			this.changeLocation(city);
+			while (!(this.categories_left.isEmpty())) {
+				if (!(this.menuItemToBeIgnored(this.categories_left.get(0)))) {
+					this.scrapeAllPrices(this.categories_left.get(0), city);
+				}
+				this.categories_left.remove(0);
+				if ((this.timeLimitExists()) && (this.timeUp())) {
+					categories_left.delete();
+					this.writeCategoriesLeft();
+					cities_xml_dom_parser.writeXML();
+					break;
+				}
 			}
-			this.categories_left.remove(0);
-			if (this.timeUp()) {
+			if (this.categories_left.isEmpty()) {
 				categories_left.delete();
-				this.writeCategoriesLeft();
+			}
+			if ((this.timeLimitExists()) && (this.timeUp())) {
+				cities_xml_dom_parser.writeXML();
 				break;
 			}
+			for (String category: this.all_categories) {
+				this.categories_left.add(category);
+			}
 		}
-		if (this.categories_left.isEmpty()) {
-			categories_left.delete();
+		if (!(cities_xml_dom_parser.hasNext())) {
+			cities_xml_dom_parser.delete();
 		}
 		this.xml_parser.closeProductXmlOutputStream();
 		this.driver.quit();
