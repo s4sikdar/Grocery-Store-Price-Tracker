@@ -511,6 +511,13 @@ public class LoblawsIterator extends BaseIterator {
 		}
 		WebElement breadcrumb_container = this.driver.findElement(new By.ByCssSelector(breadcrumb_container_selector));
 		String category_path = WebElementOperations.getInnerText(breadcrumb_container, this.driver).replace("\n", ">");
+		String date_pattern = "MMM-dd-yyyy-HH-mm";
+		DateTimeFormatter formatter = DateTimeFormatter.ofPattern(date_pattern);
+		LocalDateTime current_time = LocalDateTime.now();
+		String formatted_date = current_time.format(formatter);
+		String store_chain_name = this.getConfigProperty("store_name");
+		product_info.put("date", formatted_date);
+		product_info.put("store_chain_name", store_chain_name);
 		product_info.put("category_path", category_path);
 		product_info.put("township_location", township);
 		return product_info;
