@@ -29,6 +29,11 @@
             <artifactId>selenium-devtools-v85</artifactId>
             <version>4.19.0</version>
         </dependency>
+	<dependency>
+            <groupId>com.mysql</groupId>
+            <artifactId>mysql-connector-j</artifactId>
+            <version>9.0.0</version>
+        </dependency>
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
