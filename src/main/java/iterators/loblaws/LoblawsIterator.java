@@ -47,6 +47,7 @@ public class LoblawsIterator extends BaseIterator {
 	private ArrayList<String> categories_left;
 	private ArrayList<String> subcategories_left;
 	private boolean privacy_policy_button_removed;
+	private String store_name;
 
 
 	public LoblawsIterator(String config_file_path) {
@@ -77,6 +78,7 @@ public class LoblawsIterator extends BaseIterator {
 		this.categories_left = new ArrayList<String>();
 		this.subcategories_left = new ArrayList<String>();
 		this.privacy_policy_button_removed = false;
+		this.store_name = this.getConfigProperty("store_name");
 	}
 
 
@@ -515,9 +517,8 @@ public class LoblawsIterator extends BaseIterator {
 		DateTimeFormatter formatter = DateTimeFormatter.ofPattern(date_pattern);
 		LocalDateTime current_time = LocalDateTime.now();
 		String formatted_date = current_time.format(formatter);
-		String store_chain_name = this.getConfigProperty("store_name");
 		product_info.put("date", formatted_date);
-		product_info.put("store_chain_name", store_chain_name);
+		product_info.put("store_chain_name", this.store_name);
 		product_info.put("category_path", category_path);
 		product_info.put("township_location", township);
 		return product_info;
