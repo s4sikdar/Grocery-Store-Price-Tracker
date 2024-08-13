@@ -12,6 +12,7 @@ import javax.xml.stream.events.StartDocument;
 import javax.xml.stream.events.StartElement;
 import javax.xml.stream.events.XMLEvent;
 import iterators.GroceryStorePriceScraper;
+import iterators.DatabaseClient;
 import iterators.loblaws.LoblawsIterator;
 
 /**
