@@ -26,6 +26,7 @@ public class XMLParser {
 	private XMLEvent xml_endline;
 	private boolean xml_ostream_accessed;
 	private boolean add_name_suffix;
+	private boolean file_does_not_exist;
 	private String xml_filename;
 	private String root_tag;
 	private String mapping_tag;
@@ -34,6 +35,7 @@ public class XMLParser {
 	private ArrayList<String> matched_xml_filenames;
 	private String date_pattern;
 	private String glob_pattern;
+	private String glob_pattern_without_suffix;
 
 
 	public XMLParser(String xml_filename, String root_tag, String mapping_tag) {
@@ -79,8 +81,10 @@ public class XMLParser {
 		this.glob_pattern = prefix_and_suffix[0] +
 		"-[A-Za-z][A-Za-z][A-Za-z]-[0-9][0-9]-[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]" +
 		"." + prefix_and_suffix[1];
+		this.glob_pattern_without_suffix = prefix_and_suffix[0] + "." + prefix_and_suffix[1];
 		this.matched_xml_filenames = new ArrayList<String>();
 		this.event_reader_opened = false;
+		this.file_does_not_exist = false;
 	}
 
 
@@ -166,7 +170,11 @@ public class XMLParser {
 	 */
 	private ArrayList<String> listSourceFiles(Path directory) throws IOException {
 		ArrayList<String> result = new ArrayList<>();
-		try (DirectoryStream<Path> stream = Files.newDirectoryStream(directory, this.glob_pattern)) {
+		String pattern_for_globbing = this.glob_pattern_without_suffix;
+		if (this.add_name_suffix) {
+			pattern_for_globbing = this.glob_pattern;
+		}
+		try (DirectoryStream<Path> stream = Files.newDirectoryStream(directory, pattern_for_globbing)) {
 		   for (Path entry: stream) {
 		       result.add(entry.toString());
 		   }
@@ -192,6 +200,10 @@ public class XMLParser {
 			Path pwd = Paths.get(currentPath);
 			try {
 				ArrayList<String> files_in_pwd = this.listSourceFiles(pwd);
+				if (files_in_pwd.isEmpty()) {
+					this.file_does_not_exist = true;
+					return;
+				}
 				this.matched_xml_filenames = files_in_pwd;
 				this.current_input_xml_filename = this.matched_xml_filenames.get(0);
 				this.matched_xml_filenames.remove(0);
@@ -321,6 +333,9 @@ public class XMLParser {
 		String name;
 		if (!this.event_reader_opened) {
 			this.openProductXmlInputStream();
+			if (this.file_does_not_exist) {
+				return false;
+			}
 		}
 		while (this.xml_event_reader.hasNext()) {
 			XMLEvent next_event = this.xml_event_reader.nextEvent();
@@ -407,6 +422,37 @@ public class XMLParser {
 			}
 		} while (this.xml_event_reader.hasNext());
 		return product_details;
+	}
+
+
+	/**
+	 * clear - a public method that deletes all XML files that match the globbing pattern, allowing for us to clear old
+	 * parsing results if we want to
+	 * @return - returns nothing (void)
+	 */
+	public void clear() {
+		String currentPath = System.getProperty("user.dir");
+		Path pwd = Paths.get(currentPath);
+		ArrayList<String> files_in_pwd = new ArrayList<>();
+		try {
+			files_in_pwd = this.listSourceFiles(pwd);
+		} catch (Throwable err) {
+			System.out.println(
+				"Could not remove current XML files that match the globbing pattern due to the following error:"
+			);
+			err.printStackTrace();
+		}
+		Path xml_path;
+		File current_xml_file;
+		for (String xml_file: files_in_pwd) {
+			xml_path = pwd.resolve(xml_file);
+			current_xml_file = new File(xml_path.toString());
+			try {
+				current_xml_file.delete();
+			} catch (Throwable err) {
+				err.printStackTrace();
+			}
+		}
 	}
 
 

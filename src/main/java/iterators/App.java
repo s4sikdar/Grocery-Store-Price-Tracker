@@ -20,6 +20,7 @@ import iterators.loblaws.LoblawsIterator;
 import iterators.xml.*;
 import iterators.util.*;
 
+
 /**
  * Hello world!
  *
@@ -29,6 +30,8 @@ public class App
     public static void main( String[] args ) throws InterruptedException, XMLStreamException
     {
         //System.out.println( "Hello World!" );
+	String table_name_to_use = null;
+	HashMap<String, String> product_info = null;
 	String currentPath = System.getProperty("user.dir");
 	Path pwd = Paths.get(currentPath);
 	Path firefoxdriver_path = pwd.resolve("drivers");
@@ -43,11 +46,11 @@ public class App
 	String database_properties_file_path = database_properties_path.toString();
 	String database_xml_properties_file_path = database_xml_properties_path.toString();
 
-	//Properties database_config = new Properties();
+	Properties database_config = new Properties();
 	Properties database_xml_config = new Properties();
 
 	try {
-		//database_config.load(new FileInputStream(database_properties_file_path));
+		database_config.load(new FileInputStream(database_properties_file_path));
 		database_xml_config.load(new FileInputStream(database_xml_properties_file_path));
 	} catch (Throwable err) {
 		err.printStackTrace();
@@ -66,7 +69,19 @@ public class App
 	String fish_and_seafood_fname = database_xml_config.getProperty("fish_and_seafood");
 	String root_xml_tag_name = database_xml_config.getProperty("root_xml_tag");
 	String mapping_tag_name = database_xml_config.getProperty("mapping_tag");
+
+	String dbms_name = database_config.getProperty("dbms_name");
+	String host = database_config.getProperty("host");
+	String port = database_config.getProperty("port");
+	String database_name = database_config.getProperty("database_name");
+	String user = database_config.getProperty("user");
+	String pass = database_config.getProperty("pass");
+	String tables = database_config.getProperty("tables");
+	String columns = database_config.getProperty("columns");
+	DatabaseClient db_instance = new DatabaseClient(dbms_name, host, port, database_name, user, pass);
+	String[] database_tables = tables.split(";");
 	HashMap<String, XMLParser> xml_parsers = new HashMap<>();
+	HashMap<String, String> table_name_for_parser = new HashMap<>();
 
 	XMLParser fruits_and_vegetables = new XMLParser(fruits_and_vegetables_fname, root_xml_tag_name, mapping_tag_name);
 	XMLParser dairy_and_eggs = new XMLParser(dairy_and_eggs_fname, root_xml_tag_name, mapping_tag_name);
@@ -78,6 +93,7 @@ public class App
 	XMLParser drinks = new XMLParser(drinks_fname, root_xml_tag_name, mapping_tag_name);
 	XMLParser deli = new XMLParser(deli_fname, root_xml_tag_name, mapping_tag_name);
 	XMLParser fish_and_seafood = new XMLParser(fish_and_seafood_fname, root_xml_tag_name, mapping_tag_name);
+	XMLParser current_parser = null;
 	xml_parsers.put("fruits & vegetables", fruits_and_vegetables);
 	xml_parsers.put("dairy & eggs", dairy_and_eggs);
 	xml_parsers.put("pantry", pantry);
@@ -89,13 +105,36 @@ public class App
 	xml_parsers.put("deli", deli);
 	xml_parsers.put("fisn & seafood", fish_and_seafood);
 	Set<String> xml_parsers_keys = xml_parsers.keySet();
+	for (String table: database_tables) {
+		switch (table) {
+			case "fruits_and_vegetables":
+				table_name_for_parser.put("fruits & vegetables", "fruits_and_vegetables");
+				break;
+			case "dairy_and_eggs":
+				table_name_for_parser.put("dairy & eggs", "dairy_and_eggs");
+				break;
+			case "fish_and_seafood":
+				table_name_for_parser.put("fisn & seafood", "fish_and_seafood");
+				break;
+			case "frozen_food":
+				table_name_for_parser.put("frozen food", "frozen_food");
+				break;
+			case "snacks_and_chips_and_candy":
+				table_name_for_parser.put("snacks, chips & candy", "snacks_and_chips_and_candy");
+				break;
+			default:
+				table_name_for_parser.put(table, table);
+		}
+	}
 	//String config_path = pwd.toString() + "loblaws.properties";
 	LoblawsIterator loblaws_iter = new LoblawsIterator(loblaws_properties_path.toString(), 0, 30);
-	loblaws_iter.loadXML();
+	//loblaws_iter.clear();
+	//loblaws_iter.loadXML();
 	while (loblaws_iter.hasNext()) {
-		HashMap<String, String> product_info = loblaws_iter.next();
+		product_info = loblaws_iter.next();
 		String category = product_info.get("category_path");
 		category = category.toLowerCase().split(">")[1];
+		//product_info.remove("category_path");
 		for (String key: xml_parsers_keys) {
 			if (category.equalsIgnoreCase(key)) {
 				try {
@@ -108,6 +147,27 @@ public class App
 	}
 	for (String key: xml_parsers_keys) {
 		xml_parsers.get(key).closeProductXmlOutputStream();
+	}
+	for (String key: xml_parsers_keys) {
+		current_parser = xml_parsers.get(key);
+		table_name_to_use = table_name_for_parser.get(key);
+		while (current_parser.hasNext()) {
+			product_info = current_parser.next();
+			StringBuilder query_text = new StringBuilder()
+				.append("INSERT INTO " + table_name_to_use)
+				.append(
+				" (brand, date_collected, price, product_title, product_size, store_chain_name, township_location)"
+				)
+				.append(" VALUES( ")
+				.append("\"" + product_info.get("brand") + "\", " )
+				.append("STR_TO_DATE(\"" + product_info.get("date") + "\", \"%b-%d-%Y-%H-%i\"), " )
+				.append("\"" + product_info.get("price") + "\", " )
+				.append("\"" + product_info.get("product_title") + "\", " )
+				.append("\"" + product_info.get("size") + "\", " )
+				.append("\"" + product_info.get("store_chain_name") + "\", " )
+				.append("\"" + product_info.get("township_location") + "\" );" );
+			db_instance.query(query_text.toString());
+		}
 	}
     }
 }

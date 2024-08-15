@@ -167,6 +167,15 @@ public class BaseIterator implements GroceryStorePriceScraper {
 
 
 	/**
+	 * clear - a public method that removes all currently existing XML files with parsing results
+	 * @return - returns nothing (void)
+	 */
+	public void clear() {
+		this.xml_parser.clear();
+	}
+
+
+	/**
 	 * getNumFromConfigurationsFile - a private helper method that gets a value from the properties file
 	 * based on the configuration variable to look for (specified by config_var_name)
 	 * - It then tries to cast the string value into an integer, and then returns it
