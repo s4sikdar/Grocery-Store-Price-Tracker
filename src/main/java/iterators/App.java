@@ -2,6 +2,7 @@ package iterators;
 
 import java.lang.*;
 import java.util.*;
+import java.sql.*;
 import java.io.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -103,7 +104,7 @@ public class App
 	xml_parsers.put("bakery", bakery);
 	xml_parsers.put("drinks", drinks);
 	xml_parsers.put("deli", deli);
-	xml_parsers.put("fisn & seafood", fish_and_seafood);
+	xml_parsers.put("fish & seafood", fish_and_seafood);
 	Set<String> xml_parsers_keys = xml_parsers.keySet();
 	for (String table: database_tables) {
 		switch (table) {
@@ -114,7 +115,7 @@ public class App
 				table_name_for_parser.put("dairy & eggs", "dairy_and_eggs");
 				break;
 			case "fish_and_seafood":
-				table_name_for_parser.put("fisn & seafood", "fish_and_seafood");
+				table_name_for_parser.put("fish & seafood", "fish_and_seafood");
 				break;
 			case "frozen_food":
 				table_name_for_parser.put("frozen food", "frozen_food");
@@ -153,19 +154,31 @@ public class App
 		table_name_to_use = table_name_for_parser.get(key);
 		while (current_parser.hasNext()) {
 			product_info = current_parser.next();
+			String brand = product_info.get("brand");
+			String price = product_info.get("price");
+			String product_title = product_info.get("product_title");
+			String size = product_info.get("size");
+			String store_chain_name = product_info.get("store_chain_name");
+			String township_location = product_info.get("township_location");
+			if (brand != null) brand = brand.replace("\"", "\\\"");
+			if (price != null) price = price.replace("\"", "\\\"");
+			if (product_title != null) product_title = product_title.replace("\"", "\\\"");
+			if (size != null) size = size.replace("\"", "\\\"");
+			if (store_chain_name != null) store_chain_name = store_chain_name.replace("\"", "\\\"");
+			if (township_location != null) township_location = township_location.replace("\"", "\\\"");
 			StringBuilder query_text = new StringBuilder()
 				.append("INSERT INTO " + table_name_to_use)
 				.append(
 				" (brand, date_collected, price, product_title, product_size, store_chain_name, township_location)"
 				)
 				.append(" VALUES( ")
-				.append("\"" + product_info.get("brand") + "\", " )
+				.append("\"" + brand + "\", " )
 				.append("STR_TO_DATE(\"" + product_info.get("date") + "\", \"%b-%d-%Y-%H-%i\"), " )
-				.append("\"" + product_info.get("price") + "\", " )
-				.append("\"" + product_info.get("product_title") + "\", " )
-				.append("\"" + product_info.get("size") + "\", " )
-				.append("\"" + product_info.get("store_chain_name") + "\", " )
-				.append("\"" + product_info.get("township_location") + "\" );" );
+				.append("\"" + price + "\", " )
+				.append("\"" + product_title + "\", " )
+				.append("\"" + size + "\", " )
+				.append("\"" + store_chain_name + "\", " )
+				.append("\"" + township_location + "\" );" );
 			db_instance.query(query_text.toString());
 		}
 	}
