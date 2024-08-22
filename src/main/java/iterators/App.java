@@ -20,6 +20,7 @@ import iterators.DatabaseClient;
 import iterators.loblaws.LoblawsIterator;
 import iterators.xml.*;
 import iterators.util.*;
+import iterators.cities.*;
 
 
 /**
@@ -42,22 +43,27 @@ public class App
 
 	Path database_properties_path = pwd.resolve("database.properties");
 	Path database_xml_properties_path = pwd.resolve("database_xml.properties");
-	Path loblaws_properties_path = pwd.resolve("nofrills.properties");
+	Path store_properties_path = pwd.resolve("nofrills.properties");
+	Path cities_properties_path = pwd.resolve("cities.properties");
 
 	String database_properties_file_path = database_properties_path.toString();
 	String database_xml_properties_file_path = database_xml_properties_path.toString();
 
 	Properties database_config = new Properties();
 	Properties database_xml_config = new Properties();
+	Properties store_configurations = new Properties();
 
 	try {
 		database_config.load(new FileInputStream(database_properties_file_path));
 		database_xml_config.load(new FileInputStream(database_xml_properties_file_path));
+		store_configurations.load(new FileInputStream(store_properties_path.toString()));
 	} catch (Throwable err) {
 		err.printStackTrace();
 		System.exit(1);
 	}
-
+	String cities_left_fname = store_configurations.getProperty("cities_left_fname");
+	String root_cities_tag = store_configurations.getProperty("root_cities_tag");
+	String individual_city_tag = store_configurations.getProperty("individual_city_tag");
 	String fruits_and_vegetables_fname = database_xml_config.getProperty("fruits_and_vegetables");
 	String dairy_and_eggs_fname = database_xml_config.getProperty("dairy_and_eggs");
 	String pantry_fname = database_xml_config.getProperty("pantry");
@@ -80,6 +86,9 @@ public class App
 	String tables = database_config.getProperty("tables");
 	String columns = database_config.getProperty("columns");
 	DatabaseClient db_instance = new DatabaseClient(dbms_name, host, port, database_name, user, pass);
+	//PopularCities cities_finder = new PopularCities(
+	//	cities_left_fname, root_cities_tag, individual_city_tag, cities_properties_path.toString()
+	//);
 	String[] database_tables = tables.split(";");
 	HashMap<String, XMLParser> xml_parsers = new HashMap<>();
 	HashMap<String, String> table_name_for_parser = new HashMap<>();
@@ -128,14 +137,15 @@ public class App
 		}
 	}
 	//String config_path = pwd.toString() + "loblaws.properties";
-	LoblawsIterator loblaws_iter = new LoblawsIterator(loblaws_properties_path.toString(), 0, 30);
-	//loblaws_iter.clear();
-	//loblaws_iter.loadXML();
+	//cities_finder.loadXML();
+	LoblawsIterator loblaws_iter = new LoblawsIterator(store_properties_path.toString(), 0, 30);
+	loblaws_iter.clear();
+	loblaws_iter.loadXML();
 	while (loblaws_iter.hasNext()) {
 		product_info = loblaws_iter.next();
 		String category = product_info.get("category_path");
 		category = category.toLowerCase().split(">")[1];
-		//product_info.remove("category_path");
+		product_info.remove("category_path");
 		for (String key: xml_parsers_keys) {
 			if (category.equalsIgnoreCase(key)) {
 				try {
