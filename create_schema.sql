@@ -1,5 +1,7 @@
 BEGIN;
 
+-- use MySQL when running these commands
+
 CREATE DATABASE IF NOT EXISTS grocery_prices;
 
 USE grocery_prices;
