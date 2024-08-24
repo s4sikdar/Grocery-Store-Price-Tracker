@@ -48,20 +48,25 @@ public class PopularCities {
 	private WebDriver driver;
 	private Properties configurations;
 	private String cities_url;
+	private FirefoxOptions options;
 
 
-	public PopularCities(String cities_xml_fname, String root_cities_tag, String individual_city_tag, String config_fname) {
+	public PopularCities(
+		String cities_xml_fname, String root_cities_tag, String individual_city_tag, String config_fname, String driver_path
+	) {
 		this.cities_xml_fname = cities_xml_fname;
 		this.root_cities_tag = root_cities_tag;
 		this.individual_city_tag = individual_city_tag;
 		this.limit = limit;
 		this.cities_xml_parser = new XMLParser(cities_xml_fname, root_cities_tag, individual_city_tag);
                 this.configurations = new Properties();
+		System.setProperty("webdriver.firefox.driver", driver_path);
 		FirefoxOptions options = new FirefoxOptions();
 		//options.setPageLoadStrategy(PageLoadStrategy.EAGER);
 		options.addPreference("geo.prompt.testing", true);
 		options.addPreference("geo.prompt.testing.allow", true);
-		this.driver = new FirefoxDriver(options);
+		this.options = options;
+		this.driver = null;
 		try {
 			this.configurations.load(new FileInputStream(config_fname));
 			this.cities_url = this.configurations.getProperty("url_for_most_popular_cities");
@@ -82,6 +87,12 @@ public class PopularCities {
 		boolean element_exists;
 		WebElement city_link;
 		String city_link_text;
+		// if there is already an output XML file existing that is associated with this.cities_xml_parser then don't do
+		// anything and just return
+		if (this.cities_xml_parser.xmlFileExists()) {
+			return;
+		}
+		this.driver = new FirefoxDriver(this.options);
 		StringBuilder city_name_selector = new StringBuilder(this.configurations.getProperty("selector_for_city_name"));
 		int index_to_increment_from = Integer.parseInt(this.configurations.getProperty("index_to_start_from"));
 		this.driver.get(this.cities_url);
@@ -99,6 +110,7 @@ public class PopularCities {
 			this.cities_xml_parser.createXMLNode(this.individual_city_tag, city_link_text);
 			city_name_selector = SelectorOperations.incrementSelectorDigit(city_name_selector, index_to_increment_from);
 			element_exists = WebElementOperations.elementExistsByJavaScript(this.driver, city_name_selector.toString());
+			city_count++;
 		}
 		this.cities_xml_parser.closeProductXmlOutputStream();
 		this.driver.quit();

@@ -86,9 +86,10 @@ public class App
 	String tables = database_config.getProperty("tables");
 	String columns = database_config.getProperty("columns");
 	DatabaseClient db_instance = new DatabaseClient(dbms_name, host, port, database_name, user, pass);
-	//PopularCities cities_finder = new PopularCities(
-	//	cities_left_fname, root_cities_tag, individual_city_tag, cities_properties_path.toString()
-	//);
+	PopularCities cities_finder = new PopularCities(
+		cities_left_fname, root_cities_tag, individual_city_tag,
+		cities_properties_path.toString(), firefoxdriver_path.toString()
+	);
 	String[] database_tables = tables.split(";");
 	HashMap<String, XMLParser> xml_parsers = new HashMap<>();
 	HashMap<String, String> table_name_for_parser = new HashMap<>();
@@ -137,7 +138,7 @@ public class App
 		}
 	}
 	//String config_path = pwd.toString() + "loblaws.properties";
-	//cities_finder.loadXML();
+	cities_finder.loadXML();
 	LoblawsIterator loblaws_iter = new LoblawsIterator(store_properties_path.toString(), 0, 30);
 	loblaws_iter.clear();
 	loblaws_iter.loadXML();

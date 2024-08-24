@@ -47,6 +47,7 @@ public class LoblawsIterator extends BaseIterator {
 	private ArrayList<String> categories_left;
 	private ArrayList<String> subcategories_left;
 	private boolean privacy_policy_button_removed;
+	private boolean store_changed_for_next_round;
 	private String store_name;
 
 
@@ -78,6 +79,7 @@ public class LoblawsIterator extends BaseIterator {
 		this.categories_left = new ArrayList<String>();
 		this.subcategories_left = new ArrayList<String>();
 		this.privacy_policy_button_removed = false;
+		this.store_changed_for_next_round = false;
 		this.store_name = this.getConfigProperty("store_name");
 	}
 
@@ -664,7 +666,26 @@ public class LoblawsIterator extends BaseIterator {
 			.sendKeys(Keys.ENTER)
 			.pause(Duration.ofMillis(500))
 			.perform();
+		this.store_changed_for_next_round = false;
 		String browse_location_button_selector = this.getConfigProperty("browse_location_button_selector");
+		String store_location_text_selector = this.getConfigProperty("store_location_text_selector");
+		WebElement browse_location_button = WebElementOperations.fluentWait(
+			new By.ByCssSelector(browse_location_button_selector), this.driver, 10, 1000L
+		);
+		WebElement store_info_location_text = WebElementOperations.fluentWait(
+			new By.ByCssSelector(store_location_text_selector), this.driver, 10, 1000L
+		);
+		String store_location_value = store_info_location_text.getText();
+		String[] city_and_province = store_location_value.split(
+			"[A-Za-z]\\d[A-Za-z][ -]?\\d[A-Za-z]\\d$"
+		);
+		city_and_province[0] = city_and_province[0].trim();
+		String city_province_combination = city_and_province[0];
+		String city_value_of_first_result = city_province_combination.split(",")[0].trim();
+		String township_city_value = township.split(",")[0].trim();
+		if (!(township_city_value.equalsIgnoreCase(city_value_of_first_result))) {
+			return;
+		}
 		WebElementOperations.tryClickingElement(
 			new By.ByCssSelector(browse_location_button_selector), this.driver, 30, 1000L
 		);
@@ -690,6 +711,7 @@ public class LoblawsIterator extends BaseIterator {
 				throw err;
 			}
 		}
+		this.store_changed_for_next_round = true;
 	}
 
 
@@ -863,6 +885,9 @@ public class LoblawsIterator extends BaseIterator {
 		By submenu_item_locator = new By.ByCssSelector(submenu_item_selector_in_main_menu.toString());
 		By main_menu_item_locator = new By.ByCssSelector(main_menu_item_selector.toString());
 		this.changeLocation(township);
+		if (this.store_changed_for_next_round == false) {
+			return;
+		}
 		if (!this.privacy_policy_button_removed) {
 			this.removePrivacyPolicyButon();
 		}

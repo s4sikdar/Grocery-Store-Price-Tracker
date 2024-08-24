@@ -85,6 +85,16 @@ public class XMLParser {
 		this.matched_xml_filenames = new ArrayList<String>();
 		this.event_reader_opened = false;
 		this.file_does_not_exist = false;
+		DateTimeFormatter formatter = DateTimeFormatter.ofPattern(this.date_pattern);
+		LocalDateTime current_time = LocalDateTime.now();
+		String formatted_date = current_time.format(formatter);
+		String[] prefix_and_extension = this.xml_filename.split("\\.");
+		String xml_fname = prefix_and_extension[0] + formatted_date + "." + prefix_and_extension[1];
+		if (this.add_name_suffix) {
+			this.current_output_xml_filename = xml_fname;
+		} else {
+			this.current_output_xml_filename = this.xml_filename;
+		}
 	}
 
 
@@ -104,11 +114,6 @@ public class XMLParser {
 			LocalDateTime current_time = LocalDateTime.now();
 			String formatted_date = current_time.format(formatter);
 			String xml_fname = prefix_and_extension[0] + formatted_date + "." + prefix_and_extension[1];
-			if (this.add_name_suffix) {
-				this.current_output_xml_filename = xml_fname;
-			} else {
-				this.current_output_xml_filename = this.xml_filename;
-			}
 			Path xml_path = pwd.resolve(this.current_output_xml_filename);
 			XMLOutputFactory xmlOutputFactory = XMLOutputFactory.newInstance();
 			try {
@@ -453,6 +458,20 @@ public class XMLParser {
 				err.printStackTrace();
 			}
 		}
+	}
+
+
+	/**
+	 * xmlFileExists - a public method that returns a boolean representing if the output xml file for the parser exists
+	 * yet or not (the xml file that the XMLParser writes to)
+	 * @return - returns true if the file exists yet, returns false if not
+	 */
+	public boolean xmlFileExists() {
+		String currentPath = System.getProperty("user.dir");
+		Path pwd = Paths.get(currentPath);
+		Path xml_path = pwd.resolve(this.current_output_xml_filename);
+		File xml_file = new File(xml_path.toString());
+		return xml_file.exists();
 	}
 
 
